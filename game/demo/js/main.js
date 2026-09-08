@@ -43,6 +43,7 @@ function getPosByCell(pos) {
 
 // 加载游戏
 function loadGame(game) {
+	document.body.classList.add('level-opening');
 	n = game.n; m = game.m; remain_turns = game.turns_limit;
 	boardContainer.style.gridTemplateColumns = `repeat(${m}, 1fr)`;
 	boardContainer.innerHTML = getblock(n, m);
@@ -92,6 +93,7 @@ function loadGame(game) {
 
 /* 从存档快照恢复一局（to-do #2/#3）：重建棋盘与棋子，字段与 captureSnapshot() 一一对应 */
 function loadSnapshot(snap) {
+	document.body.classList.add('level-opening');
 	n = snap.n; m = snap.m; remain_turns = snap.remain_turns; piece_cnt = 0; armys = new Array(0);
 	selectedPieces = [];
 	selectedEnemies = [];
@@ -1275,36 +1277,77 @@ function renderOrderPreview(e) {
 	});
 }
 
-/* ========== to-do #12/#13：战前情报 + 剧情对话 ========== */
+/* ========== to-do #12/#13：战前剧情 + 战役简报 + 棋盘淡入 ========== */
+function revealBattlefield() {
+	const page = document.body;
+	page.classList.add('level-revealing');
+	page.classList.remove('level-opening');
+	window.setTimeout(function () { page.classList.remove('level-revealing'); }, 1000);
+	window.dispatchEvent(new CustomEvent('battlefield:revealed'));
+}
+
 function showLevelIntro() {
-	if (typeof CURRENT_LEVEL_ID === 'undefined' || typeof getLevelById !== 'function') return;
+	const page = document.body;
+	page.classList.remove('level-revealing');
+	page.classList.add('level-opening');
+
+	if (typeof CURRENT_LEVEL_ID === 'undefined' || typeof getLevelById !== 'function') {
+		revealBattlefield();
+		return;
+	}
 	const meta = getLevelById(CURRENT_LEVEL_ID);
-	if (!meta) return;
-	const runHint = function () {
-		const overlay = document.createElement('div');
-		overlay.className = 'intro-overlay';
-		const box = document.createElement('div');
-		box.className = 'intro-box';
-		const title = document.createElement('h2');
-		title.textContent = meta.name;
-		const body = document.createElement('p');
-		body.className = 'intro-text';
-		body.textContent = meta.hint || '击败所有红方单位即可获胜。';
-		const act = document.createElement('div');
-		act.className = 'intro-actions';
-		const go = document.createElement('button');
-		go.className = 'game-btn intro-go';
-		go.textContent = '开 战';
-		go.addEventListener('click', function () { overlay.remove(); });
-		act.appendChild(go);
-		box.appendChild(title);
-		box.appendChild(body);
-		box.appendChild(act);
-		overlay.appendChild(box);
-		document.body.appendChild(overlay);
-	};
-	// 该关有剧情（to-do #13）先演一段对话，再给战前情报
-	const story = meta.story || [];
-	if (typeof playDialogue === 'function' && story.length) playDialogue(story, runHint);
-	else runHint();
+	if (!meta) {
+		revealBattlefield();
+		return;
+	}
+
+	/* 把章节资料补到每句对白上，关卡作者只需维护 levels.js。 */
+	const story = (meta.story || []).map(function (line) {
+		return Object.assign({
+			chapter: meta.chapter || meta.name,
+			location: meta.location || '',
+			scene: meta.scene || 'campaign'
+		}, line);
+	});
+	story.push({
+		who: '战役简报',
+		role: meta.name,
+		text: meta.hint || '击败所有红方单位即可获胜。',
+		kind: 'briefing',
+		chapter: meta.chapter || meta.name,
+		location: meta.location || '',
+		scene: meta.scene || 'campaign',
+		actionLabel: '开 战'
+	});
+
+	if (typeof playDialogue === 'function') {
+		playDialogue(story, revealBattlefield);
+		return;
+	}
+
+	/* 极端情况下 dialog.js 未加载，仍给出简报并允许正常进入游戏。 */
+	const overlay = document.createElement('div');
+	overlay.className = 'intro-overlay';
+	const box = document.createElement('div');
+	box.className = 'intro-box';
+	const title = document.createElement('h2');
+	title.textContent = meta.name;
+	const body = document.createElement('p');
+	body.className = 'intro-text';
+	body.textContent = meta.hint || '击败所有红方单位即可获胜。';
+	const act = document.createElement('div');
+	act.className = 'intro-actions';
+	const go = document.createElement('button');
+	go.className = 'game-btn intro-go';
+	go.textContent = '开 战';
+	go.addEventListener('click', function () {
+		overlay.remove();
+		revealBattlefield();
+	});
+	act.appendChild(go);
+	box.appendChild(title);
+	box.appendChild(body);
+	box.appendChild(act);
+	overlay.appendChild(box);
+	document.body.appendChild(overlay);
 }

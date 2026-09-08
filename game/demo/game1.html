@@ -2,8 +2,9 @@
 <html lang="zh-CN">
 <head>
 	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<link rel="stylesheet" href="css/style.css">
-	<title>Game - Level#1</title>
+	<title>第一关 · 破晓防线 | 拿破仑战争</title>
 	<link rel="icon" type="image/svg+xml" href="./favicon.svg">
 	<!--把js文件放在头部，方便查阅-->
     <script src="js/constants.js" defer></script>
@@ -17,11 +18,11 @@
     <script src="js/levels.js" defer></script>
     <script src="js/game1.js" defer></script>
 </head>
-<body class="game1">
-<div style="display: flex; flex-direction: column; align-items: center; padding: 0%;">
+<body class="game-page game1 level-opening">
+<div class="game-heading">
 	<!--游戏上方标题-->
-	<h2>Game1 : Break through the defense</h2>
-	<footer><p id="footer-bar" style="font-size: x-small; margin: 0px 0px 10px;"></p></footer>
+	<h2>第一关 · 破晓防线</h2>
+	<footer><p id="footer-bar"></p></footer>
 </div>
 <div id="info-bar"></div>
 <div id="enemy-info"></div>
@@ -38,10 +39,10 @@
 	<p id="loseTips" style="font-size: x-small;"></p>
 </div>
 	<!--底部按钮-->
-<button id="button" style="width: 100px; height: 50px;"> Next Turn </button>
-<button id="button-next-game" style="display: none;"> Next Game </button>
-<button id="button-replay" style="display: none;"> Replay </button>
-<button id="button-fail" style="display: none;"> View Ending: Early Defeat </button>
+<button id="button" class="turn-button"> Next Turn </button>
+<button id="button-next-game" class="game-btn result-button" style="display: none;"> Next Game </button>
+<button id="button-replay" class="game-btn result-button" style="display: none;"> Replay </button>
+<button id="button-fail" class="game-btn result-button" style="display: none;"> View Ending: Early Defeat </button>
 <div id="game-actions">
 	<span id="save-load-btns">
 		<button id="button-save" class="game-btn" title="把当前这关的中途状态存进所选手动存档槽"> Save </button>

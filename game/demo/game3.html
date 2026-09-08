@@ -1,15 +1,16 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
 	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<link rel="stylesheet" href="css/style.css">
-	<title>Game - Level#3</title>
+	<title>第三关 · 雪原突骑 | 拿破仑战争</title>
 	<link rel="icon" type="image/svg+xml" href="./favicon.svg">
 </head>
-<body>
-<div style="display: flex; flex-direction: column; align-items: center; padding: 0%;">
-	<h2>Game3 : Cavalry Raid（骑兵突袭）</h2>
-	<footer><p id="footer-bar" style="font-size: x-small; margin: 0px 0px 10px;"></p></footer>
+<body class="game-page game3 level-opening">
+<div class="game-heading">
+	<h2>第三关 · 雪原突骑</h2>
+	<footer><p id="footer-bar"></p></footer>
 </div>
 <div id="info-bar"></div>
 <div id="enemy-info"></div>
@@ -24,10 +25,10 @@
 	<h1>You Lose!</h1>
 	<p id="loseTips" style="font-size: x-small;"></p>
 </div>
-<button id="button" style="width: 100px; height: 50px;"> Next Turn </button>
-<button id="button-next-game" style="display: none;"> Next Game </button>
-<button id="button-replay" style="display: none;"> Replay </button>
-<button id="button-fail" style="display: none;"> View Ending: Early Defeat </button>
+<button id="button" class="turn-button"> Next Turn </button>
+<button id="button-next-game" class="game-btn result-button" style="display: none;"> Next Game </button>
+<button id="button-replay" class="game-btn result-button" style="display: none;"> Replay </button>
+<button id="button-fail" class="game-btn result-button" style="display: none;"> View Ending: Early Defeat </button>
 <div id="game-actions">
 	<span id="save-load-btns">
 		<button id="button-save" class="game-btn" title="把当前这关的中途状态存进所选手动存档槽"> Save </button>
