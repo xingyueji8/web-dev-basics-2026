@@ -12,12 +12,18 @@
  */
 function playDialogue(lines, onDone) {
 	if (!lines || !lines.length) { if (onDone) onDone(); return; }
+	const localize = function (value) {
+		return (typeof uiLocalize === 'function') ? uiLocalize(value) : (value || '');
+	};
+	const translate = function (key, fallback) {
+		return (typeof uiT === 'function') ? uiT(key) : fallback;
+	};
 
 	const overlay = document.createElement('div');
 	overlay.className = 'dialog-overlay';
 	overlay.setAttribute('role', 'dialog');
 	overlay.setAttribute('aria-modal', 'true');
-	overlay.setAttribute('aria-label', '战前剧情');
+	overlay.setAttribute('aria-label', translate('dialogue.label', '战前剧情'));
 
 	const chapter = document.createElement('div');
 	chapter.className = 'dialog-chapter';
@@ -80,7 +86,7 @@ function playDialogue(lines, onDone) {
 		if (line.portrait && !portraits[side].source) {
 			portraits[side].source = line.portrait;
 			portraits[side].img.src = line.portrait;
-			portraits[side].img.alt = line.who || '剧情人物';
+			portraits[side].img.alt = localize(line.who) || translate('dialogue.character', '剧情人物');
 			portraits[side].holder.classList.remove('is-empty');
 		}
 	});
@@ -94,7 +100,7 @@ function playDialogue(lines, onDone) {
 		if (line.portrait) {
 			portraits[side].source = line.portrait;
 			portraits[side].img.src = line.portrait;
-			portraits[side].img.alt = line.who || '剧情人物';
+			portraits[side].img.alt = localize(line.who) || translate('dialogue.character', '剧情人物');
 			portraits[side].holder.classList.remove('is-empty');
 		}
 
@@ -106,16 +112,18 @@ function playDialogue(lines, onDone) {
 
 		overlay.dataset.scene = line.scene || 'campaign';
 		box.classList.toggle('dialog-box--briefing', isBriefing);
-		chapterName.textContent = line.chapter || '帝国战记';
-		chapterLocation.textContent = line.location || '';
-		who.textContent = line.who || '';
-		role.textContent = line.role || '';
-		text.textContent = line.text || '';
+		chapterName.textContent = localize(line.chapter) || translate('dialogue.campaign', '帝国战记');
+		chapterLocation.textContent = localize(line.location);
+		who.textContent = localize(line.who);
+		role.textContent = localize(line.role);
+		text.textContent = localize(line.text);
 		progress.textContent = String(j + 1).padStart(2, '0') + ' / ' + String(lines.length).padStart(2, '0');
-		next.textContent = line.actionLabel || (j === lines.length - 1 ? '完成' : '继续');
+		next.textContent = localize(line.actionLabel) || translate(j === lines.length - 1 ? 'dialogue.finish' : 'dialogue.continue', j === lines.length - 1 ? '完成' : '继续');
+		overlay.setAttribute('aria-label', translate('dialogue.label', '剧情对话'));
 	}
 
 	function finish() {
+		window.removeEventListener('ui:languagechange', refreshLanguage);
 		document.body.classList.remove('dialogue-active');
 		overlay.remove();
 		if (onDone) onDone();
@@ -131,6 +139,9 @@ function playDialogue(lines, onDone) {
 		e.stopPropagation();
 		advance();
 	});
+
+	function refreshLanguage() { show(i); }
+	window.addEventListener('ui:languagechange', refreshLanguage);
 
 	document.body.classList.add('dialogue-active');
 	document.body.appendChild(overlay);

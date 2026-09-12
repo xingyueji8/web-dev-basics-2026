@@ -3,9 +3,50 @@
 let armys = new Array(0);
 let n = 0, m = 0, piece_cnt = 0, remain_turns = 0;
 let eps = 0.000001;
+let footerMode = 'goal';
+let resumedLevel = null;
 
 let boardContainer = document.getElementById('board'); // 维护 board 的容器, 以备后续使用
 let buttonContainer = document.getElementById('button'); // 维护 button 的容器, 以备后续使用
+
+function gameText(key, vars, fallback) {
+	return (typeof uiT === 'function') ? uiT(key, vars, fallback) : (fallback || key);
+}
+
+function gameContent(value) {
+	return (typeof uiLocalize === 'function') ? uiLocalize(value) : (value || '');
+}
+
+function gameNotice(message, kind) {
+	if (typeof showUiNotice === 'function') showUiNotice(message, kind);
+	else alert(message);
+}
+
+/* 重画顶部回合提示。语言切换时也调用，因此不会刷新或丢失当前战局。 */
+function renderFooterStatus() {
+	const bar = document.getElementById('footer-bar');
+	if (!bar) return;
+	bar.innerHTML = '';
+	if (footerMode === 'goal') {
+		bar.appendChild(document.createTextNode(gameText('game.goalStart', null, '消灭全部')));
+		const red = document.createElement('span');
+		red.id = 'red-hinter';
+		red.textContent = gameText('game.goalRed', null, '红方');
+		red.style.fontStyle = 'italic';
+		red.style.textDecoration = 'underline';
+		red.addEventListener('click', showRedEffect);
+		bar.appendChild(red);
+		bar.appendChild(document.createTextNode(gameText('game.goalEnd', { turns: remain_turns }, '部队即可获胜！——你有 ' + remain_turns + ' 回合。')));
+		return;
+	}
+	if (footerMode === 'resume') {
+		bar.textContent = gameText('game.resumed', { level: resumedLevel, turns: remain_turns }, '已读取第 ' + resumedLevel + ' 关存档，还剩 ' + remain_turns + ' 回合。');
+		return;
+	}
+	if (remain_turns <= 5) bar.textContent = gameText('game.turnsUrgent', { turns: remain_turns }, '只剩 ' + remain_turns + ' 回合！');
+	else if (remain_turns <= 10) bar.textContent = gameText('game.turnsFew', { turns: remain_turns }, '还剩 ' + remain_turns + ' 回合。');
+	else bar.textContent = gameText('game.turns', { turns: remain_turns }, '剩余 ' + remain_turns + ' 回合。');
+}
 
 // 初始化棋盘，添加箭头
 function getblock() {
@@ -56,8 +97,9 @@ function loadGame(game) {
 	/* 棋盘是一个长和宽都是 80dvh 的的窗口，分成 n x m 个 cell，主要是方便布置棋子 */
 	/* 在现有的代码中，n 和 m 都保持为 10 */
 
-	document.getElementById('footer-bar').innerHTML = `Win by DESTROYING every <span id="red-hinter" style="font-style: italic; text-decoration: underline;">red</span> army! —— You have ${remain_turns} turns.`;
-	document.getElementById('red-hinter').addEventListener('click', showRedEffect) ;
+	footerMode = 'goal';
+	resumedLevel = null;
+	renderFooterStatus();
 	/* 加载胜利条件与回合限制 */
 	
 	game.pieces.forEach(element => {
@@ -104,8 +146,12 @@ function loadSnapshot(snap) {
 	let POS_11 = document.querySelector(`#board .cell[data-row="${1}"][data-col="${1}"]`).getBoundingClientRect();
 	distance = POS_11.left - POS_00.left;
 	offset = POS_00.width / 2.0;
-	document.getElementById('footer-bar').innerHTML = `Resumed from save: Level ${snap.level}, ${remain_turns} turns left.`;
-	alert(`已从存档继续：第 ${snap.level} 关，剩余 ${remain_turns} 回合。`);
+	footerMode = 'resume';
+	resumedLevel = snap.level;
+	renderFooterStatus();
+	if (typeof showUiNotice === 'function') {
+		showUiNotice(gameText('game.resumed', { level: snap.level, turns: remain_turns }, '已从存档继续：第 ' + snap.level + ' 关，剩余 ' + remain_turns + ' 回合。'));
+	}
 	snap.units.forEach((u, idx) => {
 		const piece = document.createElement('div');
 		piece.className = `chess chess--${u.color}`;
@@ -174,13 +220,13 @@ function refreshSlotSelect() {
 	const lvl = (typeof CURRENT_LEVEL_ID === 'undefined') ? null : CURRENT_LEVEL_ID;
 	function snapLabel(snap) {
 		if (!snap) return null;
-		if (snap.level === lvl) return '（第 ' + snap.level + ' 关，剩 ' + snap.remain_turns + ' 回合）';
-		return '（第 ' + snap.level + ' 关 · 非本关，不可读）';
+		if (snap.level === lvl) return gameText('save.sameLevel', { level: snap.level, turns: snap.remain_turns }, '（第 ' + snap.level + ' 关，剩 ' + snap.remain_turns + ' 回合）');
+		return gameText('save.otherLevel', { level: snap.level, turns: snap.remain_turns }, '（第 ' + snap.level + ' 关 · 非本关，不可读）');
 	}
 	[AUTO_ID].concat(MANUAL_IDS).forEach(function (id) {
 		const o = document.createElement('option');
 		o.value = id;
-		let extra = '（空）';
+		let extra = gameText('save.empty', null, '（空）');
 		if (id === AUTO_ID) {
 			if (auto && auto.snapshot) extra = snapLabel(auto.snapshot);
 			else if (auto && (auto.unlocked > 1 || Object.keys(auto.stars).length)) extra = '';
@@ -198,14 +244,14 @@ refreshSlotSelect();
 
 /* 验收/调试用：控制台向某目标存中途快照（默认 a.save），或清空当前用户全部存档 */
 window.__saveMidLevel = function (id) {
-	if (typeof CURRENT_LEVEL_ID === 'undefined') { alert('不在关卡内'); return; }
+	if (typeof CURRENT_LEVEL_ID === 'undefined') { gameNotice(gameText('game.notInLevel', null, '不在关卡内')); return; }
 	const user = currentUserSafe();
-	if (!user) { alert('未登录'); return; }
+	if (!user) { gameNotice(gameText('game.notLoggedIn', null, '未登录')); return; }
 	id = isFileId(id) ? String(id) : AUTO_ID;
 	const snap = captureSnapshot();
 	if (!snap) return;
 	const ok = (id === AUTO_ID) ? saveSnapshotToAuto(user, snap) : saveToManual(user, id, snap);
-	if (ok) { alert('已保存到 ' + fileName(id)); refreshSlotSelect(); }
+	if (ok) { gameNotice(gameText('game.savedTo', { file: fileName(id) }, '已保存到 ' + fileName(id))); refreshSlotSelect(); }
 };
 window.__clearSave = function () {
 	const user = currentUserSafe();
@@ -213,7 +259,7 @@ window.__clearSave = function () {
 		localStorage.removeItem('a.save:' + user);
 		MANUAL_IDS.forEach(function (id) { localStorage.removeItem('save' + id + ':' + user); });
 	}
-	alert('当前用户的自动存档与手动存档已清空');
+	gameNotice(gameText('game.savesCleared', null, '当前用户的自动存档与手动存档已清空'));
 };
 
 /* 胜负结算后隐藏"存/读档"与左右显示条（Menu 按钮保留，方便直接退出） */
@@ -511,6 +557,61 @@ function clearDisable() {
 	});
 }
 
+function showWinResult() {
+	const win = document.getElementById('win');
+	const next = document.getElementById('button-next-game');
+	if (!win || !next) return;
+	document.body.classList.add('result-active');
+	win.style.cssText = 'display:flex; flex-direction:column; align-items:center;';
+	next.style.cssText = 'display:inline-flex;';
+	/* 让按钮成为战果卡片的一部分，卡片连同按钮一起在视口正中央。 */
+	if (next.parentNode !== win) win.appendChild(next);
+	if (typeof applyUiTranslations === 'function') applyUiTranslations(win);
+	next.focus();
+}
+
+function victoryReportText(star, saveResult) {
+	const result = saveResult || { saved: false, openedHidden: false };
+	let saveMessage = result.saved
+		? gameText('victory.saved', null, '战果已自动保存到 a.save。')
+		: gameText('victory.notSaved', null, '当前未登录，本次战果没有写入存档。');
+	if (result.openedHidden) {
+		saveMessage += ' ' + gameText('victory.hidden', null, '历史出现了新的岔路：秘密路线已经开启。');
+	}
+	return gameText('victory.summary', {
+		level: (typeof CURRENT_LEVEL_ID === 'undefined' ? '?' : CURRENT_LEVEL_ID),
+		stars: star,
+		save: saveMessage
+	}, '本关战斗结束：本次获得 ' + star + ' 星。' + saveMessage);
+}
+
+/* 通关也走与开场完全相同的剧情对话引擎，不再调用浏览器 alert。 */
+function showVictoryDialogue(star, saveResult) {
+	const meta = (typeof getLevelById === 'function' && typeof CURRENT_LEVEL_ID !== 'undefined')
+		? getLevelById(CURRENT_LEVEL_ID)
+		: null;
+	const chapter = meta ? meta.chapter : '帝国战记';
+	const location = meta ? meta.location : '';
+	const scene = meta ? meta.scene : 'campaign';
+	const lines = [
+		{
+			who: '拿破仑', role: '法兰西皇帝', side: 'left',
+			portrait: 'img/portraits/napoleon.png',
+			chapter: chapter, location: location, scene: scene,
+			text: function () { return gameText('victory.napoleon', null, '敌军已经退出战场。收拢队伍，把鹰旗带到下一条战线。'); }
+		},
+		{
+			who: function () { return gameText('victory.reporter', null, '战报'); },
+			role: function () { return gameText('victory.role', null, '帝国统帅部'); },
+			kind: 'briefing', chapter: chapter, location: location, scene: scene,
+			text: function () { return victoryReportText(star, saveResult); },
+			actionLabel: function () { return gameText('victory.viewResult', null, '查看战果'); }
+		}
+	];
+	if (typeof playDialogue === 'function') playDialogue(lines, showWinResult);
+	else showWinResult();
+}
+
 /* 检查胜负状态 */
 function checkWinState() {
 	-- remain_turns;
@@ -528,10 +629,14 @@ function checkWinState() {
 		boardContainer.style.display = 'none';
 		buttonContainer.style = 'display: none;';
 		document.getElementById('footer-bar').style = 'display: none';
-		document.getElementById('win').style = 'display: flex; flex-direction: column; align-items: center;' ;
-		document.getElementById('button-next-game').style = 'width: 100px; height: 50px;';
-		// 加载胜利界面
+		document.getElementById('win').style.display = 'none';
+		document.getElementById('button-next-game').style.display = 'none';
+		document.body.classList.remove('result-active');
+		// 先计算战果，剧情对白结束后再加载中央胜利界面
 		const star = (bluec == 0) ? 1 : (bluec == 1) ? 2 : 3;
+		['1star', '2star', '3star'].forEach(function (id) {
+			document.getElementById(id).style.display = 'none';
+		});
 		if(star == 1) {
 			const winState = document.getElementById('1star');
 			winState.style.display = '' ;
@@ -547,14 +652,16 @@ function checkWinState() {
 			? CURRENT_GAME.turns_limit - remain_turns
 			: 99;
 		const quickL1 = usedTurns <= 12;
+		let saveResult = { saved: false, openedHidden: false };
 		if(typeof autosaveOnWin === 'function' && typeof CURRENT_LEVEL_ID !== 'undefined') {
-			autosaveOnWin(CURRENT_LEVEL_ID, star, quickL1);
+			saveResult = autosaveOnWin(CURRENT_LEVEL_ID, star, quickL1) || saveResult;
 		}
 		// to-do #15：连败≥4 后 3 星通关 -> "失败乃成功之母"
 		if (typeof tryThreeStarAchievement === 'function' && typeof CURRENT_LEVEL_ID !== 'undefined') {
 			tryThreeStarAchievement(CURRENT_LEVEL_ID, star);
 		}
 		hideMidGameControls();
+		showVictoryDialogue(star, saveResult);
 		return ;
 	}
 	if(bluec == 0 || remain_turns == 0) {
@@ -570,10 +677,12 @@ function checkWinState() {
 			if (CURRENT_LEVEL_ID === 7) {
 				// 隐藏第 7 关的失败有专属结局：命运无法改变
 				failBtn.dataset.target = 'destiny-fail.html';
-				failBtn.textContent = '看结局：命运无法改变';
+				failBtn.dataset.i18n = 'game.endingDestiny';
+				failBtn.textContent = gameText('game.endingDestiny', null, '看结局：命运无法改变');
 			} else {
 				failBtn.dataset.target = 'fail.html';
-				failBtn.textContent = 'View Ending: Early Defeat';
+				failBtn.dataset.i18n = 'game.endingEarly';
+				failBtn.textContent = gameText('game.endingEarly', null, '查看结局：提早失利');
 			}
 		}
 		// to-do #15：记录同关连续失败次数
@@ -583,18 +692,14 @@ function checkWinState() {
 		let tip = loseTips[Math.floor(Math.random() * loseTips.length)]
 		if (CURRENT_LEVEL_ID === 7) tip = '……帝国第二次折戟于此，命运没有给历史第二次机会。';
 		document.getElementById('loseTips').style = '';
-		document.getElementById('loseTips').innerHTML = tip;
+		document.getElementById('loseTips').dataset.sourceText = tip;
+		document.getElementById('loseTips').textContent = gameContent(tip);
 		hideMidGameControls();
 		return ;
 	}
 
-	if(remain_turns <= 5) {
-		document.getElementById('footer-bar').innerHTML = `You ONLY have ${remain_turns} turns.`;
-	} else if(remain_turns <= 10) {
-		document.getElementById('footer-bar').innerHTML = `You still have ${remain_turns} turns.`;
-	} else {
-		document.getElementById('footer-bar').innerHTML = `You have ${remain_turns} turns.`;
-	}
+	footerMode = 'turn';
+	renderFooterStatus();
 	/* 加载剩余回合数 */
 }
 
@@ -801,38 +906,38 @@ function selectedTarget() {
 
 document.getElementById('button-save').addEventListener('click', function () {
 	const user = currentUserSafe();
-	if (!user) { alert('未登录：请先回主界面登录，再来保存'); return; }
+	if (!user) { gameNotice(gameText('game.loginToSave', null, '未登录：请先回主界面登录，再来保存')); return; }
 	if (typeof CURRENT_LEVEL_ID === 'undefined') return;
 	const id = selectedTarget();
 	const snap = captureSnapshot();
 	if (!snap) return;
 	const cur = (id === AUTO_ID) ? getAuto(user) : getManual(user, id);
-	if (cur && cur.snapshot && !confirm('覆盖 ' + fileName(id) + ' 里的中途存档（第 ' + cur.snapshot.level + ' 关）？')) return;
+	if (cur && cur.snapshot && !confirm(gameText('game.overwriteConfirm', { file: fileName(id), level: cur.snapshot.level }, '覆盖 ' + fileName(id) + ' 里的中途存档（第 ' + cur.snapshot.level + ' 关）？'))) return;
 	const ok = (id === AUTO_ID) ? saveSnapshotToAuto(user, snap) : saveToManual(user, id, snap);
-	if (ok) { alert('已保存到 ' + fileName(id)); refreshSlotSelect(); }
+	if (ok) { gameNotice(gameText('game.savedTo', { file: fileName(id) }, '已保存到 ' + fileName(id))); refreshSlotSelect(); }
 });
 
 document.getElementById('button-load').addEventListener('click', function () {
 	const user = currentUserSafe();
-	if (!user) { alert('未登录'); return; }
+	if (!user) { gameNotice(gameText('game.notLoggedIn', null, '未登录')); return; }
 	const id = selectedTarget();
 	let snap;
 	if (id === AUTO_ID) {
 		snap = autoSnapshot(user);
-		if (!snap) { alert(fileName(id) + ' 里没有中途存档'); return; }
+		if (!snap) { gameNotice(gameText('game.noSnapshot', { file: fileName(id) }, fileName(id) + ' 里没有中途存档')); return; }
 	} else {
 		const f = getManual(user, id);
-		if (!f || !f.snapshot) { alert(fileName(id) + ' 里没有中途存档'); return; }
+		if (!f || !f.snapshot) { gameNotice(gameText('game.noSnapshot', { file: fileName(id) }, fileName(id) + ' 里没有中途存档')); return; }
 		snap = f.snapshot;
 	}
 	// 关卡匹配校验：本关只能读"属于本关"的存档，避免把别的关读进本关
 	if (Number(snap.level) !== CURRENT_LEVEL_ID) {
-		alert('该存档属于第 ' + snap.level + ' 关，当前在第 ' + CURRENT_LEVEL_ID + ' 关，不能在这里读取（请回主界面"载入"后，再进入对应关继续）');
+		gameNotice(gameText('game.otherLevelSave', { saved: snap.level, current: CURRENT_LEVEL_ID }, '该存档属于第 ' + snap.level + ' 关，当前在第 ' + CURRENT_LEVEL_ID + ' 关，不能在这里读取。'));
 		return;
 	}
 	// Load 语义：手动档先覆盖 a.save，再按它的快照继续
 	if (id !== AUTO_ID) loadManualToAuto(user, id);
-	if (!confirm('读取 ' + fileName(id) + '（第 ' + snap.level + ' 关，剩 ' + snap.remain_turns + ' 回合）会覆盖当前未保存进度，继续？')) return;
+	if (!confirm(gameText('game.readConfirm', { file: fileName(id), level: snap.level, turns: snap.remain_turns }, '读取 ' + fileName(id) + ' 会覆盖当前未保存进度，继续？'))) return;
 	loadSnapshot(snap);
 });
 
@@ -890,6 +995,13 @@ window.addEventListener('load', showRedEffect) ;
 
 /* ========== to-do #5：左侧显示条 ========== */
 const UNIT_NAME_MAP = { '步': '步兵', '炮': '炮兵', '骑': '骑兵', '散': '散兵', '掷': '掷弹兵' };   // 出现新兵种时在这里补显示名
+const UNIT_NAME_KEYS = { '步': 'unit.infantry', '炮': 'unit.artillery', '骑': 'unit.cavalry', '散': 'unit.skirmisher', '掷': 'unit.grenadier' };
+
+function unitDisplayName(p) {
+	const fallback = UNIT_NAME_MAP[p.cls] || p.cls || p.img || '?';
+	const key = UNIT_NAME_KEYS[p.cls];
+	return key ? gameText(key, null, fallback) : gameContent(fallback);
+}
 
 function lpRatioOf(p) {
 	const max = p.lpMax || p.lp || 1;
@@ -906,12 +1018,12 @@ function renderInfoPanel() {
 	bar.style.display = 'block';
 	const head = document.createElement('div');
 	head.className = 'info-head';
-	head.textContent = '选中部队（' + list.length + '）';
+	head.textContent = gameText('game.selected', { count: list.length }, '选中部队（' + list.length + '）');
 	bar.appendChild(head);
 	list.forEach(p => {
 		const row = document.createElement('div');
 		row.className = 'info-row';
-		const name = UNIT_NAME_MAP[p.cls] || p.cls || p.img || '?';
+		const name = unitDisplayName(p);
 		const ratio = lpRatioOf(p);
 		const color = ratio > 0.5 ? '#4a7c34' : ratio > 0.25 ? '#c99b2e' : '#c0392b';
 
@@ -923,7 +1035,7 @@ function renderInfoPanel() {
 		const rm = document.createElement('button');
 		rm.className = 'info-remove';
 		rm.textContent = '✕';
-		rm.title = '取消选中（移出显示条）';
+		rm.title = gameText('game.removeAlly', null, '取消选中（移出显示条）');
 		rm.addEventListener('click', function () { removeFromSelection(p); });
 		row.dataset.pieceId = p.id;
 		titleLine.appendChild(nameSpan);
@@ -932,7 +1044,7 @@ function renderInfoPanel() {
 
 		const stats = document.createElement('div');
 		stats.className = 'info-stats';
-		stats.textContent = '射程 ' + p.atkrange + ' · 攻击 ' + p.atk + ' · 速度 ' + p.speed;
+		stats.textContent = gameText('game.stats', { range: p.atkrange, attack: p.atk, speed: p.speed }, '射程 ' + p.atkrange + ' · 攻击 ' + p.atk + ' · 速度 ' + p.speed);
 		row.appendChild(stats);
 
 		const lpbar = document.createElement('div');
@@ -998,12 +1110,12 @@ function renderEnemyPanel() {
 	bar.style.display = 'block';
 	const head = document.createElement('div');
 	head.className = 'info-head';
-	head.textContent = '敌方部队（' + list.length + '）';
+	head.textContent = gameText('game.enemies', { count: list.length }, '敌方部队（' + list.length + '）');
 	bar.appendChild(head);
 	list.forEach(p => {
 		const row = document.createElement('div');
 		row.className = 'info-row';
-		const name = UNIT_NAME_MAP[p.cls] || p.cls || p.img || '?';
+		const name = unitDisplayName(p);
 		const ratio = lpRatioOf(p);
 		const color = ratio > 0.5 ? '#4a7c34' : ratio > 0.25 ? '#c99b2e' : '#c0392b';
 
@@ -1015,7 +1127,7 @@ function renderEnemyPanel() {
 		const rm = document.createElement('button');
 		rm.className = 'info-remove';
 		rm.textContent = '✕';
-		rm.title = '移出敌方查看';
+		rm.title = gameText('game.removeEnemy', null, '移出敌方查看');
 		rm.addEventListener('click', function () { removeFromEnemies(p); });
 		row.dataset.pieceId = p.id;
 		titleLine.appendChild(nameSpan);
@@ -1045,7 +1157,9 @@ addEnemySelectionListener(renderEnemyPanel);
 function setViewMode(m) {
 	viewMode = (m === 'enemy') ? 'enemy' : 'ally';
 	const btn = document.getElementById('button-mode');
-	if (btn) btn.textContent = (viewMode === 'enemy') ? '返回指挥' : '查看敌人';
+	if (btn) btn.textContent = (viewMode === 'enemy')
+		? gameText('game.backCommand', null, '返回指挥')
+		: gameText('game.viewEnemy', null, '查看敌人');
 	if (viewMode === 'enemy') clearSelection(); else clearEnemies();
 	hideArrow();
 }
@@ -1310,14 +1424,14 @@ function showLevelIntro() {
 		}, line);
 	});
 	story.push({
-		who: '战役简报',
+		who: function () { return gameText('dialogue.briefing', null, '战役简报'); },
 		role: meta.name,
-		text: meta.hint || '击败所有红方单位即可获胜。',
+		text: meta.hint || function () { return gameText('dialogue.defeatAll', null, '击败所有红方单位即可获胜。'); },
 		kind: 'briefing',
 		chapter: meta.chapter || meta.name,
 		location: meta.location || '',
 		scene: meta.scene || 'campaign',
-		actionLabel: '开 战'
+		actionLabel: function () { return gameText('dialogue.startBattle', null, '开 战'); }
 	});
 
 	if (typeof playDialogue === 'function') {
@@ -1331,15 +1445,15 @@ function showLevelIntro() {
 	const box = document.createElement('div');
 	box.className = 'intro-box';
 	const title = document.createElement('h2');
-	title.textContent = meta.name;
+	title.textContent = gameContent(meta.name);
 	const body = document.createElement('p');
 	body.className = 'intro-text';
-	body.textContent = meta.hint || '击败所有红方单位即可获胜。';
+	body.textContent = meta.hint ? gameContent(meta.hint) : gameText('dialogue.defeatAll', null, '击败所有红方单位即可获胜。');
 	const act = document.createElement('div');
 	act.className = 'intro-actions';
 	const go = document.createElement('button');
 	go.className = 'game-btn intro-go';
-	go.textContent = '开 战';
+	go.textContent = gameText('dialogue.startBattle', null, '开 战');
 	go.addEventListener('click', function () {
 		overlay.remove();
 		revealBattlefield();
@@ -1351,3 +1465,19 @@ function showLevelIntro() {
 	overlay.appendChild(box);
 	document.body.appendChild(overlay);
 }
+
+/* 只重画文字，不刷新页面，也不改 armys / 回合 / 选中状态。 */
+window.addEventListener('ui:languagechange', function () {
+	renderFooterStatus();
+	refreshSlotSelect();
+	renderInfoPanel();
+	renderEnemyPanel();
+	const modeButton = document.getElementById('button-mode');
+	if (modeButton) {
+		modeButton.textContent = viewMode === 'enemy'
+			? gameText('game.backCommand', null, '返回指挥')
+			: gameText('game.viewEnemy', null, '查看敌人');
+	}
+	const tip = document.getElementById('loseTips');
+	if (tip && tip.dataset.sourceText) tip.textContent = gameContent(tip.dataset.sourceText);
+});

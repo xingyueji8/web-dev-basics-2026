@@ -57,6 +57,6 @@ if (typeof currentUser === 'function' && currentUser()) {
 if (lockOk) {
 	bootGame7();
 } else {
-	alert('需要先通关第 6 关才能进入此关。');
+	alert(typeof uiT === 'function' ? uiT('game.level7Locked') : '需要先通关第 6 关才能进入此关。');
 	window.location.replace('menu.html');
 }

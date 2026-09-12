@@ -7,29 +7,30 @@
 	<link rel="stylesheet" href="css/style.css">
 	<link rel="icon" type="image/svg+xml" href="./favicon.svg">
 </head>
-<body class="page-login">
+<body class="page-login" data-title-i18n="site.title">
 	<div class="page-box">
 		<p class="page-kicker">THE NAPOLEONIC CAMPAIGNS · 1805–1815</p>
-		<h1>拿破仑战争</h1>
-		<p class="page-sub">回合制策略小游戏 · 消灭红方军队，改写历史</p>
+		<h1 data-i18n="site.title">拿破仑战争</h1>
+		<p class="page-sub" data-i18n="site.subtitle">回合制策略小游戏 · 消灭红方军队，改写历史</p>
 
 		<div id="login-panel" class="form-box">
-			<h2>登录</h2>
+			<h2 data-i18n="auth.loginTitle">登录</h2>
 			<form id="login-form" autocomplete="on">
-				<label>用户名
-					<input type="text" id="login-name" autocomplete="username" placeholder="请输入用户名">
+				<label><span data-i18n="auth.username">用户名</span>
+					<input type="text" id="login-name" autocomplete="username" placeholder="请输入用户名" data-i18n-placeholder="auth.usernamePlaceholder">
 				</label>
-				<label>密码
-					<input type="password" id="login-pass" autocomplete="current-password" placeholder="请输入密码">
+				<label><span data-i18n="auth.password">密码</span>
+					<input type="password" id="login-pass" autocomplete="current-password" placeholder="请输入密码" data-i18n-placeholder="auth.passwordPlaceholder">
 				</label>
-				<button type="submit">登 录</button>
+				<button type="submit" data-i18n="auth.loginButton">登 录</button>
 			</form>
 			<p id="login-msg" class="form-msg"></p>
-			<p class="form-link">还没有账号？<a href="register.html">去注册</a></p>
-			<p class="form-link"><a href="group.html">查看小组介绍</a></p>
+			<p class="form-link"><span data-i18n="auth.noAccount">还没有账号？</span> <a href="register.html" data-i18n="auth.toRegister">去注册</a></p>
+			<p class="form-link"><a href="group.html" data-i18n="auth.group">查看小组介绍</a></p>
 		</div>
 	</div>
 
+	<script src="js/ui.js"></script>
 	<script src="js/account.js"></script>
 	<script>
 		document.getElementById('login-form').addEventListener('submit', function (e) {

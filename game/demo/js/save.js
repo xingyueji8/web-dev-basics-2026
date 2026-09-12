@@ -18,7 +18,10 @@
 var AUTO_ID = 'a';
 var MANUAL_IDS = ['1', '2', '3'];
 
-function fileName(id) { return String(id) === AUTO_ID ? '自动存档 (a.save)' : '存档 ' + id; }
+function fileName(id) {
+	if (String(id) === AUTO_ID) return (typeof uiT === 'function') ? uiT('save.auto') : '自动存档 (a.save)';
+	return (typeof uiT === 'function') ? uiT('save.slot', { id: id }) : '存档 ' + id;
+}
 function isFileId(id) { return String(id) === AUTO_ID || MANUAL_IDS.indexOf(String(id)) !== -1; }
 
 /* URL 带 resume=1 表示：从 a.save 的快照继续当前关 */
@@ -84,9 +87,9 @@ function clearManual(user, id) {
 /* 通关自动存档：写入活动存档 a.save。未登录忽略。
  * quickL1：第 1 关是否在 12 回合内通关（开启隐藏路线，to-do #14） */
 function autosaveOnWin(levelId, star, quickL1) {
-	if (typeof currentUser !== 'function') return false;
+	if (typeof currentUser !== 'function') return { saved: false, openedHidden: false };
 	var user = currentUser();
-	if (!user) return false;
+	if (!user) return { saved: false, openedHidden: false };
 	var f = ensureAuto(user);
 	var key = String(levelId);
 	f.stars[key] = Math.max(f.stars[key] || 0, star);
@@ -98,12 +101,8 @@ function autosaveOnWin(levelId, star, quickL1) {
 		openedHidden = true;
 	}
 	putAuto(user, f);
-	if (openedHidden) {
-		alert('历史似乎发生了一点变化——秘密路线已开启，第 6 关之后将出现隐藏的第 7 关。已自动存档（a.save）');
-	} else {
-		alert('第 ' + levelId + ' 关通关！已自动存档（a.save）');
-	}
-	return true;
+	/* 胜利提示由 main.js 用剧情对话框统一呈现，这里只返回存档结果。 */
+	return { saved: true, openedHidden: openedHidden };
 }
 
 /* 关卡内 Save -> a.save：把本关快照写进活动存档（menu 将显示该关"继续"） */
@@ -176,10 +175,10 @@ function hasBeatenLevel(user, levelId) {
 
 /* ========== to-do #15：成就（按用户隔离，key: achv:<用户名>） ========== */
 var ACHIEVEMENTS = [
-	{ code: 'victory_end', name: '胜利', desc: '进入正常结局（end-game.html）' },
-	{ code: 'tragic_fail', name: '惨痛失败', desc: '进入失败结局（fail.html）' },
-	{ code: 'empire', name: '法兰西帝国', desc: '进入隐藏结局（hidden-end.html）' },
-	{ code: 'rise_again', name: '失败乃成功之母', desc: '同一关连续失败 4 次后，以 3 星通关' }
+	{ code: 'victory_end', name: '胜利', desc: '进入正常结局（end-game.html）', nameKey: 'achievement.victory.name', descKey: 'achievement.victory.desc' },
+	{ code: 'tragic_fail', name: '惨痛失败', desc: '进入失败结局（fail.html）', nameKey: 'achievement.fail.name', descKey: 'achievement.fail.desc' },
+	{ code: 'empire', name: '法兰西帝国', desc: '进入隐藏结局（hidden-end.html）', nameKey: 'achievement.empire.name', descKey: 'achievement.empire.desc' },
+	{ code: 'rise_again', name: '失败乃成功之母', desc: '同一关连续失败 4 次后，以 3 星通关', nameKey: 'achievement.rise.name', descKey: 'achievement.rise.desc' }
 ];
 
 function achKey(user) { return 'achv:' + user; }
@@ -197,10 +196,15 @@ function achievementMeta(code) {
 /* 成就总表（含是否已解锁），给 menu 展示 */
 function achievementState(user) {
 	var st = user ? readAch(user) : {};
-	return ACHIEVEMENTS.map(a => ({ code: a.code, name: a.name, desc: a.desc, unlocked: !!st[a.code] }));
+	return ACHIEVEMENTS.map(a => ({
+		code: a.code,
+		name: (typeof uiT === 'function') ? uiT(a.nameKey, null, a.name) : a.name,
+		desc: (typeof uiT === 'function') ? uiT(a.descKey, null, a.desc) : a.desc,
+		unlocked: !!st[a.code]
+	}));
 }
 
-/* 解锁一个成就：首次解锁才弹窗提示；未登录忽略 */
+/* 解锁一个成就：首次解锁才显示右下角提示；未登录忽略。 */
 function unlockAchievement(code) {
 	if (typeof currentUser !== 'function') return false;
 	var user = currentUser();
@@ -210,7 +214,15 @@ function unlockAchievement(code) {
 	st[code] = true;
 	writeAch(user, st);
 	var a = achievementMeta(code);
-	if (a) alert('成就解锁：' + a.name + ' —— ' + a.desc);
+	if (a) {
+		var name = (typeof uiT === 'function') ? uiT(a.nameKey, null, a.name) : a.name;
+		var desc = (typeof uiT === 'function') ? uiT(a.descKey, null, a.desc) : a.desc;
+		var message = (typeof uiT === 'function')
+			? uiT('achievement.unlocked', { name: name, desc: desc })
+			: '成就解锁：' + name + ' —— ' + desc;
+		if (typeof showUiNotice === 'function') showUiNotice(message, 'achievement');
+		else if (typeof console !== 'undefined') console.info(message);
+	}
 	return true;
 }
 
