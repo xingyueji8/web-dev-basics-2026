@@ -98,17 +98,15 @@ function autosaveOnWin(levelId, star, quickL1) {
 	f.unlocked = Math.max(f.unlocked || 1, Number(levelId) + 1);
 	f.snapshot = null;
 	putAuto(user, f);
-	/* 胜利提示由 main.js 用剧情对话框统一呈现，这里只返回存档结果。 */
-	return { saved: true, openedHidden: openedHidden };
 	/* 2026-09：通关不再打断流程，结算页也不再写任何说明文字（原"第 N 关通关！已自动存档（a.save）"已删）。
 	   main.js 的 showWinNote() 保留但当前无人调用。 */
 	/* 隐藏路线刚被打开：右上角浮动提示 */
-	if (!wasHiddenOpen && hiddenRouteOpen()) {
-		if (typeof achievementToast === 'function') {
-			achievementToast('隐藏路线开启', '第 1～6 关全部达成 3 星 · 隐藏的第 7 关已解锁');
-		}
+	var openedHidden = !wasHiddenOpen && hiddenRouteOpen();
+	if (openedHidden && typeof showUiNotice === 'function') {
+		showUiNotice(typeof uiT === 'function' ? uiT('victory.hidden') : '第 1～6 关全部达成 3 星，隐藏的第 7 关已解锁。', 'achievement');
 	}
-	return true;
+	/* 胜利提示由 main.js 用剧情对话框统一呈现，这里只返回存档结果。 */
+	return { saved: true, openedHidden: openedHidden };
 }
 
 /* 关卡内 Save -> a.save：把本关快照写进活动存档（menu 将显示该关"继续"） */
@@ -253,12 +251,8 @@ function unlockAchievement(code) {
 			? uiT('achievement.unlocked', { name: name, desc: desc })
 			: '成就解锁：' + name + ' —— ' + desc;
 		if (typeof showUiNotice === 'function') showUiNotice(message, 'achievement');
+		else if (typeof achievementToast === 'function') achievementToast(name, desc);
 		else if (typeof console !== 'undefined') console.info(message);
-		if (typeof achievementToast === 'function') {
-			achievementToast('成就解锁 · ' + a.name, a.desc);   // 右上角浮动提示（2026-09 起替代 alert）
-		} else {
-			alert('成就解锁：' + a.name + ' —— ' + a.desc);
-		}
 	}
 	return true;
 }

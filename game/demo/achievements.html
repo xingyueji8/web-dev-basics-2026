@@ -7,14 +7,14 @@
 	<link rel="stylesheet" href="css/style.css">
 	<link rel="icon" type="image/svg+xml" href="./favicon.svg">
 </head>
-<body class="page-menu">
+<body class="page-menu" data-title-i18n="site.title">
 	<audio id="menu-music" loop>
 		<source src="mus/Preussens-Gloria.mp3" type="audio/mpeg">
 	</audio>
 	<div class="page-box">
-		<p class="page-kicker">IMPERIAL HONOURS · 帝国荣誉</p>
-		<h1>成就</h1>
-		<p class="page-sub">指挥官 <span id="welcome-name"></span>，这是你的战功簿。</p>
+		<p class="page-kicker" data-localize>IMPERIAL HONOURS · 帝国荣誉</p>
+		<h1 data-localize>成就</h1>
+		<p class="page-sub"><span data-localize>指挥官</span> <span id="welcome-name"></span><span data-localize>，这是你的战功簿。</span></p>
 	</div>
 
 	<!-- 成就墙（2026-09 起独立成页）：由 js/menu-achv.js 的 renderMenuAchievements() 填充 -->
@@ -22,7 +22,7 @@
 
 	<div class="page-box">
 		<ul class="menu-list">
-			<li><a class="menu-link" href="menu.html">返回主界面</a></li>
+			<li><a class="menu-link" href="menu.html" data-localize>返回主界面</a></li>
 		</ul>
 	</div>
 

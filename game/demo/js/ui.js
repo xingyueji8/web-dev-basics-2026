@@ -1,8 +1,9 @@
 /* 全站界面层：三语切换、夜览模式、密码可见按钮与轻量提示。
  *
  * 页面中的固定文字使用 data-i18n="键名"；JS 动态文字使用 uiT('键名')。
- * 剧情等内容可使用 uiLocalize(value)，value 既可以是普通中文字符串，也可以是
- * { 'zh-CN': '...', 'zh-TW': '...', en: '...' } 这样的三语对象。
+* 剧情等内容可使用 uiLocalize(value)，value 既可以是普通中文字符串，也可以是
+* { 'zh-CN': '...', 'zh-TW': '...', en: '...' } 这样的三语对象。
+ */
 /* UI 提示组件（2026-09）
  *
  * 目的：把玩家流程里的原生 alert() / confirm() 换成项目内、可样式化的提示，
@@ -126,7 +127,7 @@
 			'game.readConfirm': '读取 {file}（第 {level} 关，剩 {turns} 回合）会覆盖当前未保存的进度，继续？',
 			'game.savesCleared': '当前用户的自动存档与手动存档已清空',
 			'game.notInLevel': '当前不在关卡内',
-			'game.level7Locked': '需要先通关第 6 关才能进入此关。',
+			'game.level7Locked': '需要第 1～6 关全部获得 3 星，才能解锁第 7 关。',
 			'game.goal': '消灭全部红方部队即可获胜！——你有 {turns} 回合。',
 			'game.goalStart': '消灭全部',
 			'game.goalRed': '红方',
@@ -257,7 +258,7 @@
 			'game.otherLevelSave': '該存檔屬於第 {saved} 關，目前是第 {current} 關，不能在這裡讀取。請回主畫面載入後，再進入對應關卡繼續。',
 			'game.readConfirm': '讀取 {file}（第 {level} 關，剩 {turns} 回合）會覆蓋目前未儲存的進度，繼續？',
 			'game.savesCleared': '目前使用者的自動存檔與手動存檔已清空', 'game.notInLevel': '目前不在關卡內',
-			'game.level7Locked': '需要先通關第 6 關才能進入此關。',
+			'game.level7Locked': '需要第 1～6 關全部獲得 3 星，才能解鎖第 7 關。',
 			'game.goal': '消滅全部紅方部隊即可獲勝！——你有 {turns} 回合。',
 			'game.goalStart': '消滅全部', 'game.goalRed': '紅方', 'game.goalEnd': '部隊即可獲勝！——你有 {turns} 回合。',
 			'game.resumed': '已讀取第 {level} 關存檔，還剩 {turns} 回合。',
@@ -352,7 +353,7 @@
 			'game.otherLevelSave': 'This save belongs to Level {saved}, but you are in Level {current}. Load it from Campaign Command, then enter the matching level.',
 			'game.readConfirm': 'Loading {file} (Level {level}, {turns} turns left) will replace unsaved progress. Continue?',
 			'game.savesCleared': 'All autosaves and manual saves for the current user were cleared', 'game.notInLevel': 'You are not currently in a battle',
-			'game.level7Locked': 'Clear Level 6 before entering this level.',
+			'game.level7Locked': 'Earn 3 stars in Levels 1–6 to unlock Level 7.',
 			'game.goal': 'Destroy every red unit to win! — You have {turns} turns.',
 			'game.goalStart': 'Destroy all ', 'game.goalRed': 'red ', 'game.goalEnd': 'units to win! — You have {turns} turns.',
 			'game.resumed': 'Level {level} resumed with {turns} turns left.',

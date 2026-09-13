@@ -8,34 +8,13 @@
 	<link rel="icon" type="image/svg+xml" href="./favicon.svg">
 </head>
 <body class="page-menu" data-title-i18n="menu.title">
-	<div class="page-box">
-		<p class="page-kicker" data-i18n="kicker.menu">IMPERIAL HEADQUARTERS · 帝国统帅部</p>
-		<h1 data-i18n="menu.title">游戏主界面</h1>
-		<p class="page-sub"><span data-i18n="menu.welcome">欢迎回来，</span><span id="welcome-name"></span><span data-i18n="menu.welcomeEnd">！</span></p>
-		<p id="save-note" class="save-note"></p>
-	</div>
-
-	<h2 class="section-title" data-i18n="menu.autoHeading">活动存档 · 自动存档 a.save（进度与进行中的关）</h2>
-	<ul id="level-list" class="level-list"></ul>
-
-	<h2 class="section-title" data-i18n="menu.manualHeading">手动备份（存档 1/2/3）——"载入"会用该档覆盖 a.save</h2>
-	<ul id="manual-list" class="level-list"></ul>
-
-	<div class="page-box">
-		<ul class="menu-list">
-			<li><a class="menu-link" href="group.html" data-i18n="menu.group">小组介绍</a></li>
-			<li><a class="menu-link" href="#" id="logout-btn" data-i18n="menu.logout">退出登录</a></li>
-		</ul>
-		<button id="btn-restart" class="game-btn danger-btn" title="清空活动存档 a.save，从头开始" data-i18n="menu.restart" data-i18n-title="menu.restartTitle">重新开始游戏</button>
-		<p class="page-note" data-i18n="menu.note">通关自动存入 a.save；关卡内 Save 可写入 a.save 或备份到 存档1~3；Load 就是把所选存档覆盖回 a.save。</p>
-<body class="page-menu">
 	<audio id="menu-music" loop>
 		<source src="mus/Preussens-Gloria.mp3" type="audio/mpeg">
 	</audio>
 	<div class="page-box">
-		<p class="page-kicker">IMPERIAL HEADQUARTERS · 帝国统帅部</p>
-		<h1>游戏主界面</h1>
-		<p class="page-sub">欢迎回来，<span id="welcome-name"></span>！</p>
+		<p class="page-kicker" data-i18n="kicker.menu">IMPERIAL HEADQUARTERS · 帝国统帅部</p>
+		<h1 data-i18n="menu.title">游戏主界面</h1>
+		<p class="page-sub"><span data-i18n="menu.welcome">欢迎回来，</span><span id="welcome-name"></span><span data-i18n="menu.welcomeEnd">！</span></p>
 	</div>
 
 	<!-- 战役地图（关卡目录）：底图是本地生成的 img/europe-map.svg；
@@ -51,13 +30,12 @@
 
 	<div class="page-box">
 		<ul class="menu-list">
-			<li><a class="menu-link" href="group.html">小组介绍</a></li>
+			<li><a class="menu-link" href="group.html" data-i18n="menu.group">小组介绍</a></li>
 			<li><a class="menu-link" href="achievements.html" id="achv-link">成就</a></li>
-			<li><a class="menu-link" href="#" id="logout-btn">退出登录</a></li>
+			<li><a class="menu-link" href="#" id="logout-btn" data-i18n="menu.logout">退出登录</a></li>
 		</ul>
 	</div>
 
-	<script src="js/ui.js"></script>
 	<script src="js/account.js"></script>
 	<script src="js/ui.js"></script>
 	<script src="js/save.js"></script>
@@ -74,142 +52,6 @@
 		renderMenuSaves();   // 摘要 + 关卡进度（"存档 / 读档"弹窗里的内容在点开时渲染）
 		bindMenuSaves();     // "存档 / 读档"按钮
 
-		var levelList = document.getElementById('level-list');
-		var manualList = document.getElementById('manual-list');
-
-		function starsText(s) {
-			return s > 0 ? '★'.repeat(s) + '☆'.repeat(3 - s) : uiT('menu.cleared');
-		}
-
-		function render() {
-			var auto = autoProgress(user);
-
-			document.getElementById('save-note').textContent =
-				uiT('menu.progress', { count: Object.keys(auto.stars).length }) +
-				(auto.snapshot ? uiT('menu.current', { level: auto.snapshot.level }) : '');
-
-			// —— 活动存档 a.save 的关卡进度（同关有进行中快照则只给"继续"）——
-			levelList.innerHTML = '';
-			LEVELS.forEach(function (lv) {
-				var s = auto.stars['' + lv.id] || 0;
-				var unlocked = (auto.unlocked || 1) >= lv.id;
-				var cont = auto.snapshot && Number(auto.snapshot.level) === lv.id;
-
-				var li = document.createElement('li');
-				li.className = 'level-row' + (unlocked || cont ? '' : ' level-locked');
-				var info = document.createElement('span');
-				info.className = 'level-info';
-				info.innerHTML = '<span class="level-name">' + uiLocalize(lv.name) + '</span>' +
-					'<span class="level-stars">' +
-					(cont ? uiT('menu.playing', { turns: auto.snapshot.remain_turns }) : starsText(s)) +
-					'</span>';
-				li.appendChild(info);
-
-				if (cont) {
-					var go = document.createElement('a');
-					go.className = 'level-btn';
-					go.href = lv.file + '?resume=1';
-					go.textContent = uiT('menu.continue');
-					li.appendChild(go);
-				} else if (unlocked) {
-					var start = document.createElement('a');
-					start.className = 'level-btn';
-					start.href = lv.file;
-					start.textContent = uiT('menu.start');
-					li.appendChild(start);
-				} else {
-					var locked = document.createElement('span');
-					locked.textContent = uiT('menu.locked');
-					locked.className = 'level-btn level-btn-disabled';
-					li.appendChild(locked);
-				}
-				levelList.appendChild(li);
-			});
-
-			// —— 隐藏关：game1 ≤12 回合开启路线；需先通关第 6 关才能进入（此前显示"？？？"+🔒）——
-			if (typeof hiddenRouteOpen === 'function' && hiddenRouteOpen()) {
-				var hm = (typeof getHiddenLevel === 'function') ? getHiddenLevel() : null;
-				if (hm) {
-					var lv6ok = (typeof hasBeatenLevel === 'function') ? hasBeatenLevel(user, 6) : false;
-					var hs7 = auto.stars['7'] || 0;
-					var hcont = !!(auto.snapshot && Number(auto.snapshot.level) === 7);
-					var hli = document.createElement('li');
-					hli.className = 'level-row' + (lv6ok ? '' : ' achv-locked');
-					var hinfo = document.createElement('span');
-					hinfo.className = 'level-info';
-					if (lv6ok) {
-						hinfo.innerHTML = '<span class="level-name">' + uiLocalize(hm.name) + '</span>' +
-							'<span class="level-stars">' +
-							(hcont ? uiT('menu.playing', { turns: auto.snapshot.remain_turns }) : (hs7 > 0 ? starsText(hs7) : uiT('menu.cleared'))) +
-							'</span>';
-						hli.appendChild(hinfo);
-						var hbtn = document.createElement('a');
-						hbtn.className = 'level-btn';
-						hbtn.href = hm.file + (hcont ? '?resume=1' : '');
-						hbtn.textContent = hcont ? uiT('menu.continue') : uiT('menu.start');
-						hli.appendChild(hbtn);
-					} else {
-						hinfo.innerHTML = '<span class="level-name">？？？</span>' +
-							'<span class="level-stars">' + uiT('menu.revealAfter6') + '</span>';
-						hli.appendChild(hinfo);
-						var lockBadge = document.createElement('span');
-						lockBadge.className = 'level-btn level-btn-disabled';
-						lockBadge.textContent = uiT('menu.needLevel6');
-						hli.appendChild(lockBadge);
-					}
-					levelList.appendChild(hli);
-				}
-			}
-
-			// —— 手动备份档：载入（覆盖 a.save）/ 删除 ——
-			manualList.innerHTML = '';
-			manualSummaries(user).forEach(function (m) {
-				var f = m.file;
-				var li = document.createElement('li');
-				li.className = 'level-row';
-				var info = document.createElement('span');
-				info.className = 'level-info';
-				var detail = '';
-				if (f) {
-						detail = f.snapshot
-						? uiT('menu.levelProgress', { level: f.snapshot.level, turns: f.snapshot.remain_turns })
-						: uiT('menu.progress', { count: Object.keys(f.stars).length });
-				} else {
-					detail = uiT('menu.empty');
-				}
-				info.innerHTML = '<span class="level-name">' + fileName(m.id) + '</span>' +
-					'<span class="level-stars">' + detail + '</span>';
-				li.appendChild(info);
-
-				if (f) {
-					var load = document.createElement('button');
-					load.className = 'game-btn';
-					load.textContent = uiT('menu.load');
-					load.onclick = (function (id) {
-						return function () {
-							if (!confirm(uiT('menu.loadConfirm', { file: fileName(id) }))) return;
-							if (loadManualToAuto(user, id)) { showUiNotice(uiT('menu.loaded', { file: fileName(id) })); render(); }
-						};
-					})(m.id);
-					li.appendChild(load);
-
-					var del = document.createElement('button');
-					del.className = 'game-btn';
-					del.textContent = uiT('menu.delete');
-					del.onclick = (function (id) {
-						return function () {
-							if (confirm(uiT('menu.deleteConfirm', { file: fileName(id) }))) { clearManual(user, id); render(); }
-						};
-					})(m.id);
-					li.appendChild(del);
-				} else {
-					var dash = document.createElement('span');
-					dash.textContent = '—';
-					dash.style.opacity = '0.5';
-					li.appendChild(dash);
-				}
-				manualList.appendChild(li);
-			});
 		/* 成就入口显示进度计数（成就墙本体在 achievements.html） */
 		function refreshAchvLink() {
 			if (typeof achievementState !== 'function') return;
@@ -227,55 +69,6 @@
 			window.location.href = 'index.html';
 		});
 
-		// 重新开始游戏 = 清空活动存档 a.save（手动备份档保留）
-		document.getElementById('btn-restart').addEventListener('click', function () {
-			if (!confirm(uiT('menu.restartConfirm'))) return;
-			resetAutoSave(user);
-			showUiNotice(uiT('menu.restarted'));
-			render();
-		});
-
-		render();
-
-		// —— 成就列表（to-do #15）——
-		function renderAchievements() {
-			var old = document.getElementById('achv-area');
-			if (old) old.remove();
-			var holder = document.createElement('div');
-			holder.id = 'achv-area';
-			var list = (typeof achievementState === 'function') ? achievementState(user) : [];
-			var done = list.filter(function (a) { return a.unlocked; }).length;
-			var h = document.createElement('h2');
-			h.className = 'section-title';
-			h.textContent = uiT('menu.achievements', { done: done, total: list.length });
-			holder.appendChild(h);
-			var ul = document.createElement('ul');
-			ul.className = 'level-list';
-			list.forEach(function (a) {
-				var li = document.createElement('li');
-				li.className = 'level-row' + (a.unlocked ? '' : ' achv-locked');
-				var info = document.createElement('span');
-				info.className = 'level-info';
-				info.innerHTML = '<span class="level-name">' + a.name + '</span>' +
-					'<span class="level-stars">' + a.desc + '</span>';
-				li.appendChild(info);
-				var badge = document.createElement('span');
-				badge.className = 'level-btn ' + (a.unlocked ? '' : 'level-btn-disabled');
-				badge.textContent = a.unlocked ? uiT('menu.achieved') : uiT('menu.notAchieved');
-				li.appendChild(badge);
-				ul.appendChild(li);
-			});
-			holder.appendChild(ul);
-			var ref = document.querySelector('.menu-list');
-			var box = ref ? ref.closest('.page-box') : null;
-			if (box && box.parentNode) box.parentNode.insertBefore(holder, box);
-			else document.body.appendChild(holder);
-		}
-		renderAchievements();
-		window.addEventListener('ui:languagechange', function () {
-			render();
-			renderAchievements();
-		});
 		/* 主界面背景音乐 */
 		initBgm('menu-music');
 	</script>

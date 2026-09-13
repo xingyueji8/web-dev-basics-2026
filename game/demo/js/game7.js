@@ -59,10 +59,10 @@ if (typeof hiddenRouteOpen === 'function') {
 if (lockOk) {
 	bootGame7();
 } else {
-	alert(typeof uiT === 'function' ? uiT('game.level7Locked') : '需要先通关第 6 关才能进入此关。');
-	window.location.replace('menu.html');
 	/* 2026-09：改用卡片式弹窗提示，确认后再回主界面；无 UI 组件时退回原生 alert */
-	var lockMsg = '需要第 1～6 关全部获得 3 星，才能解锁第 7 关。';
+	var lockMsg = (typeof uiT === 'function')
+		? uiT('game.level7Locked')
+		: '需要第 1～6 关全部获得 3 星，才能解锁第 7 关。';
 	var toMenu = function () { window.location.replace('menu.html'); };
 	if (typeof modalNotice === 'function') {
 		modalNotice(lockMsg, toMenu);

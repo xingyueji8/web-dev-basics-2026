@@ -24,7 +24,6 @@ function playDialogue(lines, onDone) {
 	overlay.setAttribute('role', 'dialog');
 	overlay.setAttribute('aria-modal', 'true');
 	overlay.setAttribute('aria-label', translate('dialogue.label', '战前剧情'));
-	overlay.setAttribute('aria-label', '战前剧情');
 
 	const chapter = document.createElement('div');
 	chapter.className = 'dialog-chapter';
@@ -88,7 +87,6 @@ function playDialogue(lines, onDone) {
 			portraits[side].source = line.portrait;
 			portraits[side].img.src = line.portrait;
 			portraits[side].img.alt = localize(line.who) || translate('dialogue.character', '剧情人物');
-			portraits[side].img.alt = line.who || '剧情人物';
 			portraits[side].holder.classList.remove('is-empty');
 		}
 	});
@@ -103,7 +101,6 @@ function playDialogue(lines, onDone) {
 			portraits[side].source = line.portrait;
 			portraits[side].img.src = line.portrait;
 			portraits[side].img.alt = localize(line.who) || translate('dialogue.character', '剧情人物');
-			portraits[side].img.alt = line.who || '剧情人物';
 			portraits[side].holder.classList.remove('is-empty');
 		}
 
@@ -127,16 +124,6 @@ function playDialogue(lines, onDone) {
 
 	function finish() {
 		window.removeEventListener('ui:languagechange', refreshLanguage);
-		chapterName.textContent = line.chapter || '帝国战记';
-		chapterLocation.textContent = line.location || '';
-		who.textContent = line.who || '';
-		role.textContent = line.role || '';
-		text.textContent = line.text || '';
-		progress.textContent = String(j + 1).padStart(2, '0') + ' / ' + String(lines.length).padStart(2, '0');
-		next.textContent = line.actionLabel || (j === lines.length - 1 ? '完成' : '继续');
-	}
-
-	function finish() {
 		document.body.classList.remove('dialogue-active');
 		overlay.remove();
 		if (onDone) onDone();

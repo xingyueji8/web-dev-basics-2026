@@ -53,7 +53,7 @@ body {
 }
 
 .chess--blue:hover img {
-	filter: brightness(0.8);   
+	filter: brightness(0.8);
 	transition: filter 0.3s ease;
 }
 
@@ -85,7 +85,7 @@ body {
 }
 
 .chess.disabled img {
-	filter: brightness(0.2);   
+	filter: brightness(0.2);
 	transition: filter 0.2s ease;
 }
 
@@ -686,7 +686,6 @@ footer { margin: 0; }
 .cell {
     background-color: transparent;
 }
-
 /* ==================================================
    第一关介绍图
    流程：
@@ -1291,8 +1290,6 @@ a:hover { color: #431317; }
 	gap: 0.7rem 1.4rem;
 	margin-top: 1.15rem;
 	text-align: center;
-}
-
 	background: none;
 	border: none;
 	border-radius: 0;
@@ -1396,14 +1393,6 @@ body.game-page::before {
 	background: transparent;
 }
 
-.game-page.game1 #board {
-	background-image:
-		linear-gradient(rgba(210, 191, 150, 0.1), rgba(53, 42, 25, 0.18)),
-		url('../img/background1.png');
-	background-size: cover, cover;
-	background-position: center;
-}
-
 .game-page .chess {
 	border: 1px solid rgba(255, 246, 219, 0.78);
 	background: rgba(17, 25, 34, 0.32);
@@ -1475,10 +1464,6 @@ body.game-page::before {
 	background: #eee0c3;
 }
 
-#win,
-#lose {
-	min-width: 300px;
-	margin-top: 2rem;
 /* 结算区（胜利 / 失败面板 + Next / Replay / View Ending）作为一个整体固定在视口正中央。
    只给 #win/#lose 定位是不够的 —— 结算按钮是 body 的兄弟节点，会留在文档流上方，
    所以 gameN.html 里把面板与按钮一起包进 #result-area（见各关 HTML）。 */
@@ -1945,297 +1930,6 @@ body.dialogue-active { overflow: hidden; }
 	}
 }
 
-/* ========================================================================== */
-/* 全站三语 / 夜览组件                                                        */
-/* ========================================================================== */
-
-.ui-toolbar {
-	position: fixed;
-	z-index: 900;
-	top: 12px;
-	right: 12px;
-	display: flex;
-	align-items: center;
-	gap: 6px;
-	padding: 5px;
-	border: 1px solid rgba(218, 196, 136, 0.52);
-	border-radius: 6px;
-	background: rgba(9, 21, 36, 0.88);
-	box-shadow: 0 6px 20px rgba(0, 0, 0, 0.24);
-	backdrop-filter: blur(8px);
-}
-
-.ui-language,
-.ui-theme {
-	min-height: 34px;
-	margin: 0;
-	border: 1px solid rgba(218, 196, 136, 0.45);
-	border-radius: 3px;
-	color: #fff5dc;
-	background: #172d49;
-	cursor: pointer;
-}
-
-.ui-language {
-	max-width: 118px;
-	padding: 0 0.48rem;
-	font-size: 0.75rem;
-}
-
-.ui-theme {
-	display: grid;
-	width: 34px;
-	padding: 0;
-	place-items: center;
-	font-size: 1.08rem;
-	line-height: 1;
-}
-
-.ui-language:focus-visible,
-.ui-theme:focus-visible,
-.password-toggle:focus-visible {
-	outline: 2px solid var(--ui-gold-300);
-	outline-offset: 2px;
-}
-
-/* 密码框的小眼睛由 ui.js 自动插入；按钮不参与表单提交。 */
-.password-field {
-	position: relative;
-	display: block;
-	margin-top: 0.35rem;
-}
-
-.form-box .password-field input {
-	margin-top: 0;
-	padding-right: 3rem;
-}
-
-.form-box .password-toggle,
-.form-box .password-toggle:hover,
-.form-box .password-toggle:active {
-	position: absolute;
-	top: 50%;
-	right: 0.42rem;
-	display: grid;
-	width: 2.25rem;
-	height: 2.25rem;
-	min-width: 0;
-	margin: 0;
-	padding: 0;
-	transform: translateY(-50%);
-	place-items: center;
-	border: 0;
-	border-radius: 50%;
-	color: #4f5d6c;
-	background: transparent;
-	box-shadow: none;
-	filter: none;
-	cursor: pointer;
-}
-
-.form-box .password-toggle:hover {
-	color: var(--ui-red-800);
-	background: rgba(35, 68, 102, 0.1);
-}
-
-.password-toggle svg {
-	width: 1.25rem;
-	height: 1.25rem;
-	fill: none;
-	stroke: currentColor;
-	stroke-linecap: round;
-	stroke-linejoin: round;
-	stroke-width: 1.8;
-}
-
-.password-toggle .eye-slash { display: none; }
-.password-toggle.is-visible .eye-slash { display: block; }
-
-.ui-notices {
-	position: fixed;
-	z-index: 950;
-	right: 14px;
-	bottom: 14px;
-	display: grid;
-	width: min(390px, calc(100vw - 28px));
-	gap: 8px;
-}
-
-.ui-notice {
-	display: flex;
-	align-items: flex-start;
-	justify-content: space-between;
-	gap: 12px;
-	padding: 0.78rem 0.9rem;
-	border: 1px solid var(--ui-gold-500);
-	border-left: 5px solid var(--ui-navy-700);
-	color: #2f291f;
-	background: #fff8e8;
-	box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28);
-}
-
-.ui-notice--achievement { border-left-color: var(--ui-gold-500); }
-
-.ui-notice button {
-	flex: 0 0 auto;
-	border: 0;
-	color: inherit;
-	background: transparent;
-	font-size: 1.2rem;
-	line-height: 1;
-	cursor: pointer;
-}
-
-/* 对话框固定贴住页面底边并占满宽度，正文仍限制在舒适阅读宽度。 */
-.dialog-box {
-	left: 0;
-	right: 0;
-	bottom: 0;
-	width: 100%;
-	max-width: none;
-	min-height: 190px;
-	padding: 1.25rem max(1.25rem, calc((100vw - 900px) / 2)) 1.2rem;
-	transform: none;
-	border-right: 0;
-	border-bottom: 0;
-	border-left: 0;
-	border-radius: 0;
-	box-shadow: 0 -18px 54px rgba(0, 0, 0, 0.5), inset 0 5px rgba(255, 255, 255, 0.22);
-}
-
-.dialog-heading,
-.dialog-text {
-	width: 100%;
-	max-width: 900px;
-	margin-right: auto;
-	margin-left: auto;
-}
-
-.dialog-next { right: max(1.25rem, calc((100vw - 900px) / 2)); }
-
-@keyframes dialogueRise {
-	from { opacity: 0; transform: translateY(18px); }
-	to { opacity: 1; transform: translateY(0); }
-}
-
-/* 胜利卡片和“下一关”按钮属于同一块结果面板，始终在视口正中央。 */
-body.game-page.result-active { justify-content: center; }
-
-body.game-page.result-active #win {
-	position: fixed;
-	z-index: 360;
-	top: 50%;
-	left: 50%;
-	width: min(430px, calc(100vw - 32px));
-	min-width: 0;
-	margin: 0;
-	transform: translate(-50%, -50%);
-}
-
-body.game-page.result-active #win #button-next-game {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	margin-top: 1rem;
-}
-
-/* 夜览：普通页面由羊皮纸切换为深蓝战地档案，关卡页再压低环境亮度。 */
-html[data-theme='dark'] body:not(.game-page) {
-	color: #eee3cb;
-	background:
-		radial-gradient(circle at 12% 8%, rgba(79, 94, 107, 0.28), transparent 32rem),
-		linear-gradient(145deg, #152436, #070e18 74%);
-}
-
-html[data-theme='dark'] .page-box h1,
-html[data-theme='dark'] .section-title,
-html[data-theme='dark'] .member-card h3,
-html[data-theme='dark'] .level-name,
-html[data-theme='dark'] .form-box h2 { color: #f5e8c6; text-shadow: none; }
-
-html[data-theme='dark'] .page-sub,
-html[data-theme='dark'] .page-note,
-html[data-theme='dark'] .save-note,
-html[data-theme='dark'] .member-card p,
-html[data-theme='dark'] .level-stars { color: #c9b991; }
-
-html[data-theme='dark'] .form-box,
-html[data-theme='dark'] .level-row,
-html[data-theme='dark'] .member-card,
-html[data-theme='dark'] .story-panel {
-	color: #eee3cb;
-	border-color: rgba(218, 196, 136, 0.42);
-	background: linear-gradient(135deg, rgba(28, 45, 63, 0.97), rgba(10, 23, 38, 0.98));
-	box-shadow: 0 16px 46px rgba(0, 0, 0, 0.42), inset 0 0 0 1px rgba(218, 196, 136, 0.09);
-}
-
-html[data-theme='dark'] .form-box label,
-html[data-theme='dark'] .story-line { color: #e7dac0; }
-html[data-theme='dark'] .story-line b { color: #f0cd85; }
-
-html[data-theme='dark'] .form-box input,
-html[data-theme='dark'] #slot-select,
-html[data-theme='dark'] .file-selector select {
-	color: #f4ead4;
-	border-color: #786947;
-	background: rgba(5, 15, 27, 0.72);
-}
-
-html[data-theme='dark'] a { color: #e3c67f; }
-html[data-theme='dark'] a:hover { color: #fff0bd; }
-html[data-theme='dark'] .menu-link { color: #fff8e7; }
-
-html[data-theme='dark'] body.game-page {
-	background:
-		radial-gradient(circle at 50% 38%, rgba(46, 64, 78, 0.25), transparent 38rem),
-		linear-gradient(150deg, #0b1622, #030810 78%);
-}
-
-html[data-theme='dark'] .game-page #board { filter: brightness(0.78) saturate(0.82); }
-
-html[data-theme='dark'] #info-bar,
-html[data-theme='dark'] #enemy-info {
-	color: #eee3cb;
-	border-color: #75623d;
-	background: rgba(15, 28, 42, 0.97);
-}
-
-html[data-theme='dark'] .info-head,
-html[data-theme='dark'] .info-title,
-html[data-theme='dark'] .info-stats,
-html[data-theme='dark'] .info-lptext { color: #e8d9b6; }
-
-html[data-theme='dark'] .dialog-box {
-	color: #efe4cd;
-	background:
-		linear-gradient(105deg, rgba(23, 39, 56, 0.99), rgba(8, 20, 34, 0.99)),
-		repeating-linear-gradient(0deg, transparent 0 5px, rgba(255, 255, 255, 0.025) 6px);
-	box-shadow: 0 -18px 54px rgba(0, 0, 0, 0.72), inset 0 5px rgba(218, 196, 136, 0.08);
-}
-
-html[data-theme='dark'] .dialog-text { color: #eee3cb; }
-html[data-theme='dark'] .dialog-role,
-html[data-theme='dark'] .dialog-progress { color: #bdad89; }
-html[data-theme='dark'] .dialog-heading { border-bottom-color: rgba(218, 196, 136, 0.24); }
-html[data-theme='dark'] .dialog-box--briefing .dialog-who { color: #a9cae7; }
-html[data-theme='dark'] .ui-notice { color: #eee3cb; background: #102235; }
-
-@media (max-width: 760px) {
-	.ui-toolbar { top: 6px; right: 6px; }
-	.ui-language { max-width: 105px; font-size: 0.7rem; }
-	.dialog-box {
-		bottom: 0;
-		width: 100%;
-		min-height: 205px;
-		padding: 1rem 1rem 3.7rem;
-		transform: none;
-	}
-	.dialog-next { right: 1rem; }
-}
-
-@media (max-height: 680px) and (min-width: 761px) {
-	.dialog-box { bottom: 0; min-height: 168px; }
-}
 /* ==========================================================================
    每关专属棋盘桌面（A 的 7 张背景图） —— 必须放在本文件最末尾
    --------------------------------------------------------------------------
@@ -2766,3 +2460,294 @@ html[data-theme='dark'] .ui-notice { color: #eee3cb; background: #102235; }
 
 .ui-modal--wide #btn-restart { display: block; margin: 1.2rem auto 0; }
 .ui-modal--wide .ui-modal-actions { margin-top: 1.1rem; }
+
+/* 全站三语 / 夜览组件                                                        */
+/* ========================================================================== */
+
+.ui-toolbar {
+	position: fixed;
+	z-index: 900;
+	top: 12px;
+	right: 12px;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 5px;
+	border: 1px solid rgba(218, 196, 136, 0.52);
+	border-radius: 6px;
+	background: rgba(9, 21, 36, 0.88);
+	box-shadow: 0 6px 20px rgba(0, 0, 0, 0.24);
+	backdrop-filter: blur(8px);
+}
+
+.ui-language,
+.ui-theme {
+	min-height: 34px;
+	margin: 0;
+	border: 1px solid rgba(218, 196, 136, 0.45);
+	border-radius: 3px;
+	color: #fff5dc;
+	background: #172d49;
+	cursor: pointer;
+}
+
+.ui-language {
+	max-width: 118px;
+	padding: 0 0.48rem;
+	font-size: 0.75rem;
+}
+
+.ui-theme {
+	display: grid;
+	width: 34px;
+	padding: 0;
+	place-items: center;
+	font-size: 1.08rem;
+	line-height: 1;
+}
+
+.ui-language:focus-visible,
+.ui-theme:focus-visible,
+.password-toggle:focus-visible {
+	outline: 2px solid var(--ui-gold-300);
+	outline-offset: 2px;
+}
+
+/* 密码框的小眼睛由 ui.js 自动插入；按钮不参与表单提交。 */
+.password-field {
+	position: relative;
+	display: block;
+	margin-top: 0.35rem;
+}
+
+.form-box .password-field input {
+	margin-top: 0;
+	padding-right: 3rem;
+}
+
+.form-box .password-toggle,
+.form-box .password-toggle:hover,
+.form-box .password-toggle:active {
+	position: absolute;
+	top: 50%;
+	right: 0.42rem;
+	display: grid;
+	width: 2.25rem;
+	height: 2.25rem;
+	min-width: 0;
+	margin: 0;
+	padding: 0;
+	transform: translateY(-50%);
+	place-items: center;
+	border: 0;
+	border-radius: 50%;
+	color: #4f5d6c;
+	background: transparent;
+	box-shadow: none;
+	filter: none;
+	cursor: pointer;
+}
+
+.form-box .password-toggle:hover {
+	color: var(--ui-red-800);
+	background: rgba(35, 68, 102, 0.1);
+}
+
+.password-toggle svg {
+	width: 1.25rem;
+	height: 1.25rem;
+	fill: none;
+	stroke: currentColor;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+	stroke-width: 1.8;
+}
+
+.password-toggle .eye-slash { display: none; }
+.password-toggle.is-visible .eye-slash { display: block; }
+
+.ui-notices {
+	position: fixed;
+	z-index: 950;
+	right: 14px;
+	bottom: 14px;
+	display: grid;
+	width: min(390px, calc(100vw - 28px));
+	gap: 8px;
+}
+
+.ui-notice {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 12px;
+	padding: 0.78rem 0.9rem;
+	border: 1px solid var(--ui-gold-500);
+	border-left: 5px solid var(--ui-navy-700);
+	color: #2f291f;
+	background: #fff8e8;
+	box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28);
+}
+
+.ui-notice--achievement { border-left-color: var(--ui-gold-500); }
+
+.ui-notice button {
+	flex: 0 0 auto;
+	border: 0;
+	color: inherit;
+	background: transparent;
+	font-size: 1.2rem;
+	line-height: 1;
+	cursor: pointer;
+}
+
+/* 对话框固定贴住页面底边并占满宽度，正文仍限制在舒适阅读宽度。 */
+.dialog-box {
+	left: 0;
+	right: 0;
+	bottom: 0;
+	width: 100%;
+	max-width: none;
+	min-height: 190px;
+	padding: 1.25rem max(1.25rem, calc((100vw - 900px) / 2)) 1.2rem;
+	transform: none;
+	border-right: 0;
+	border-bottom: 0;
+	border-left: 0;
+	border-radius: 0;
+	box-shadow: 0 -18px 54px rgba(0, 0, 0, 0.5), inset 0 5px rgba(255, 255, 255, 0.22);
+}
+
+.dialog-heading,
+.dialog-text {
+	width: 100%;
+	max-width: 900px;
+	margin-right: auto;
+	margin-left: auto;
+}
+
+.dialog-next { right: max(1.25rem, calc((100vw - 900px) / 2)); }
+
+@keyframes dialogueRise {
+	from { opacity: 0; transform: translateY(18px); }
+	to { opacity: 1; transform: translateY(0); }
+}
+
+/* 胜利卡片和“下一关”按钮属于同一块结果面板，始终在视口正中央。 */
+body.game-page.result-active { justify-content: center; }
+
+body.game-page.result-active #win {
+	position: fixed;
+	z-index: 360;
+	top: 50%;
+	left: 50%;
+	width: min(430px, calc(100vw - 32px));
+	min-width: 0;
+	margin: 0;
+	transform: translate(-50%, -50%);
+}
+
+body.game-page.result-active #win #button-next-game {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	margin-top: 1rem;
+}
+
+/* 夜览：普通页面由羊皮纸切换为深蓝战地档案，关卡页再压低环境亮度。 */
+html[data-theme='dark'] body:not(.game-page) {
+	color: #eee3cb;
+	background:
+		radial-gradient(circle at 12% 8%, rgba(79, 94, 107, 0.28), transparent 32rem),
+		linear-gradient(145deg, #152436, #070e18 74%);
+}
+
+html[data-theme='dark'] .page-box h1,
+html[data-theme='dark'] .section-title,
+html[data-theme='dark'] .member-card h3,
+html[data-theme='dark'] .level-name,
+html[data-theme='dark'] .form-box h2 { color: #f5e8c6; text-shadow: none; }
+
+html[data-theme='dark'] .page-sub,
+html[data-theme='dark'] .page-note,
+html[data-theme='dark'] .save-note,
+html[data-theme='dark'] .member-card p,
+html[data-theme='dark'] .level-stars { color: #c9b991; }
+
+html[data-theme='dark'] .form-box,
+html[data-theme='dark'] .level-row,
+html[data-theme='dark'] .member-card,
+html[data-theme='dark'] .story-panel {
+	color: #eee3cb;
+	border-color: rgba(218, 196, 136, 0.42);
+	background: linear-gradient(135deg, rgba(28, 45, 63, 0.97), rgba(10, 23, 38, 0.98));
+	box-shadow: 0 16px 46px rgba(0, 0, 0, 0.42), inset 0 0 0 1px rgba(218, 196, 136, 0.09);
+}
+
+html[data-theme='dark'] .form-box label,
+html[data-theme='dark'] .story-line { color: #e7dac0; }
+html[data-theme='dark'] .story-line b { color: #f0cd85; }
+
+html[data-theme='dark'] .form-box input,
+html[data-theme='dark'] #slot-select,
+html[data-theme='dark'] .file-selector select {
+	color: #f4ead4;
+	border-color: #786947;
+	background: rgba(5, 15, 27, 0.72);
+}
+
+html[data-theme='dark'] a { color: #e3c67f; }
+html[data-theme='dark'] a:hover { color: #fff0bd; }
+html[data-theme='dark'] .menu-link { color: #fff8e7; }
+
+html[data-theme='dark'] body.game-page {
+	background:
+		radial-gradient(circle at 50% 38%, rgba(46, 64, 78, 0.25), transparent 38rem),
+		linear-gradient(150deg, #0b1622, #030810 78%);
+}
+
+html[data-theme='dark'] .game-page #board { filter: brightness(0.78) saturate(0.82); }
+
+html[data-theme='dark'] #info-bar,
+html[data-theme='dark'] #enemy-info {
+	color: #eee3cb;
+	border-color: #75623d;
+	background: rgba(15, 28, 42, 0.97);
+}
+
+html[data-theme='dark'] .info-head,
+html[data-theme='dark'] .info-title,
+html[data-theme='dark'] .info-stats,
+html[data-theme='dark'] .info-lptext { color: #e8d9b6; }
+
+html[data-theme='dark'] .dialog-box {
+	color: #efe4cd;
+	background:
+		linear-gradient(105deg, rgba(23, 39, 56, 0.99), rgba(8, 20, 34, 0.99)),
+		repeating-linear-gradient(0deg, transparent 0 5px, rgba(255, 255, 255, 0.025) 6px);
+	box-shadow: 0 -18px 54px rgba(0, 0, 0, 0.72), inset 0 5px rgba(218, 196, 136, 0.08);
+}
+
+html[data-theme='dark'] .dialog-text { color: #eee3cb; }
+html[data-theme='dark'] .dialog-role,
+html[data-theme='dark'] .dialog-progress { color: #bdad89; }
+html[data-theme='dark'] .dialog-heading { border-bottom-color: rgba(218, 196, 136, 0.24); }
+html[data-theme='dark'] .dialog-box--briefing .dialog-who { color: #a9cae7; }
+html[data-theme='dark'] .ui-notice { color: #eee3cb; background: #102235; }
+
+@media (max-width: 760px) {
+	.ui-toolbar { top: 6px; right: 6px; }
+	.ui-language { max-width: 105px; font-size: 0.7rem; }
+	.dialog-box {
+		bottom: 0;
+		width: 100%;
+		min-height: 205px;
+		padding: 1rem 1rem 3.7rem;
+		transform: none;
+	}
+	.dialog-next { right: 1rem; }
+}
+
+@media (max-height: 680px) and (min-width: 761px) {
+	.dialog-box { bottom: 0; min-height: 168px; }
+}

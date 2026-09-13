@@ -17,12 +17,7 @@ function gameContent(value) {
 	return (typeof uiLocalize === 'function') ? uiLocalize(value) : (value || '');
 }
 
-function gameNotice(message, kind) {
-	if (typeof showUiNotice === 'function') showUiNotice(message, kind);
-	else alert(message);
-}
-
-/* 重画顶部回合提示。语言切换时也调用，因此不会刷新或丢失当前战局。 */
+/* 统一重画回合提示，语言切换时不刷新战局。 */
 function renderFooterStatus() {
 	const bar = document.getElementById('footer-bar');
 	if (!bar) return;
@@ -58,12 +53,12 @@ function getblock() {
       <polygon points="0 0, 6 2, 0 4" fill="#ff4444" />
     </marker>
   </defs>
-  <line id="arrowLine" 
-        x1="0" y1="0" x2="0" y2="0" 
-        stroke="#ff4444" 
-        stroke-width="2" 
-        stroke-dasharray="6, 4" 
-        marker-end="url(#arrowhead)" 
+  <line id="arrowLine"
+        x1="0" y1="0" x2="0" y2="0"
+        stroke="#ff4444"
+        stroke-width="2"
+        stroke-dasharray="6, 4"
+        marker-end="url(#arrowhead)"
         style="display:none;" />
 </svg>`;
 }
@@ -81,10 +76,23 @@ let distance, offset, arrowLine;
 function getPosByCell(pos) {
 	return (pos - offset) / distance ;
 }
+/* 鼠标坐标 → 棋盘图层坐标所用的原点。
+ * 棋子 / 常驻箭头 / 范围圈 / 框选矩形都是 #board 的绝对定位子元素，
+ * 它们的坐标原点 = #board 的 padding box（边框以内）；而 getBoundingClientRect()
+ * 返回的是 border box（含边框）。B 的美化给 #board 加了 9px 边框（窄屏 6px），
+ * 不扣掉就会让「鼠标跟随的预览箭头」和「点地下令的目标点」整体偏移一个边框宽度。
+ * clientLeft / clientTop 正好等于左/上边框宽度，且随断点自动变化，故用它修正。 */
+function boardContentRect() {
+	const r = boardContainer.getBoundingClientRect();
+	return {
+		left: r.left + boardContainer.clientLeft,
+		top: r.top + boardContainer.clientTop
+	};
+}
 
 // 加载游戏
 function loadGame(game) {
-	document.body.classList.add('level-opening');
+	document.body.classList.add('level-opening');   // 从 demo-美化好 移植：开场隐藏战场，等 revealBattlefield() 淡入
 	n = game.n; m = game.m; remain_turns = game.turns_limit;
 	boardContainer.style.gridTemplateColumns = `repeat(${m}, 1fr)`;
 	boardContainer.innerHTML = getblock(n, m);
@@ -101,7 +109,7 @@ function loadGame(game) {
 	resumedLevel = null;
 	renderFooterStatus();
 	/* 加载胜利条件与回合限制 */
-	
+
 	game.pieces.forEach(element => {
 		piece = document.createElement('div');
   	piece.className = `chess chess--${element.color}`;
@@ -135,7 +143,6 @@ function loadGame(game) {
 
 /* 从存档快照恢复一局（to-do #2/#3）：重建棋盘与棋子，字段与 captureSnapshot() 一一对应 */
 function loadSnapshot(snap) {
-	document.body.classList.add('level-opening');
 	n = snap.n; m = snap.m; remain_turns = snap.remain_turns; piece_cnt = 0; armys = new Array(0);
 	selectedPieces = [];
 	selectedEnemies = [];
@@ -149,9 +156,7 @@ function loadSnapshot(snap) {
 	footerMode = 'resume';
 	resumedLevel = snap.level;
 	renderFooterStatus();
-	if (typeof showUiNotice === 'function') {
-		showUiNotice(gameText('game.resumed', { level: snap.level, turns: remain_turns }, '已从存档继续：第 ' + snap.level + ' 关，剩余 ' + remain_turns + ' 回合。'));
-	}
+	if (typeof toast === 'function') toast(gameText('game.resumed', { level: snap.level, turns: remain_turns }, '已从存档继续：第 ' + snap.level + ' 关，剩余 ' + remain_turns + ' 回合。'));
 	snap.units.forEach((u, idx) => {
 		const piece = document.createElement('div');
 		piece.className = `chess chess--${u.color}`;
@@ -175,6 +180,7 @@ function loadSnapshot(snap) {
 			atkrange: u.atkrange, atk: u.atk, lp: restoredLp,
 			lpMax: restoredMax,
 			disabled: !!u.disabled,
+			escaped: !!u.escaped,
 			cls: u.cls, img: u.img || ''
 		});
 		movePieceTo(piece.id, u.posx, u.posy);
@@ -190,258 +196,25 @@ function loadSnapshot(snap) {
 /* 抓取当前这一局的中途状态（手动存档 / 自动存档都用它） */
 function captureSnapshot() {
 	if (typeof CURRENT_LEVEL_ID === 'undefined') return null;
-/* 主要代码，负责加载页面，保持游戏运行，判断通关 */ 
- 
-let armys = new Array(0); 
-let n = 0, m = 0, piece_cnt = 0, remain_turns = 0; 
-let eps = 0.000001; 
- 
-let boardContainer = document.getElementById('board'); // 维护 board 的容器, 以备后续使用 
-let buttonContainer = document.getElementById('button'); // 维护 button 的容器, 以备后续使用 
- 
-// 初始化棋盘，添加箭头 
-function getblock() { 
-	let html = ''; 
-	for(let i = 0; i < n; ++ i) for(let j = 0; j < m; ++ j) html += `<div class="cell" data-row="${i}" data-col="${j}"></div>`; 
-	return html + `<svg id="arrowSvg" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:5;"> 
-  <defs> 
-    <marker id="arrowhead" markerWidth="6" markerHeight="4" refX="6" refY="2" orient="auto"> 
-      <polygon points="0 0, 6 2, 0 4" fill="#ff4444" /> 
-    </marker> 
-  </defs> 
-  <line id="arrowLine"  
-        x1="0" y1="0" x2="0" y2="0"  
-        stroke="#ff4444"  
-        stroke-width="2"  
-        stroke-dasharray="6, 4"  
-        marker-end="url(#arrowhead)"  
-        style="display:none;" /> 
-</svg>`; 
-} 
- 
-// 对于每一类棋子生成对应的 html 
-function getHtmlForPiece(element) { 
-	if(element.img) return `<img src='./img/${element.img}.png' style='width: 120%; height: 120%;' alt='${element.class}' draggable='false'></img>`; 
-	else return `<p>${element.class}</p>` ; 
-} 
- 
-// 以备后续计算棋子位置使用 
-let distance, offset, arrowLine; 
- 
-// 将由 html 表示的位置坐标转换为用cell数表示 
-function getPosByCell(pos) { 
-	return (pos - offset) / distance ; 
-} 
-/* 鼠标坐标 → 棋盘图层坐标所用的原点。
- * 棋子 / 常驻箭头 / 范围圈 / 框选矩形都是 #board 的绝对定位子元素，
- * 它们的坐标原点 = #board 的 padding box（边框以内）；而 getBoundingClientRect()
- * 返回的是 border box（含边框）。B 的美化给 #board 加了 9px 边框（窄屏 6px），
- * 不扣掉就会让「鼠标跟随的预览箭头」和「点地下令的目标点」整体偏移一个边框宽度。
- * clientLeft / clientTop 正好等于左/上边框宽度，且随断点自动变化，故用它修正。 */
-function boardContentRect() {
-	const r = boardContainer.getBoundingClientRect();
 	return {
-		left: r.left + boardContainer.clientLeft,
-		top: r.top + boardContainer.clientTop
+		level: CURRENT_LEVEL_ID,
+		n: n, m: m,
+		remain_turns: remain_turns,
+		units: armys.map(u => ({
+			color: u.color, cls: u.cls, img: u.img || '',
+			posx: u.posx, posy: u.posy,
+			targetx: u.targetx, targety: u.targety,
+			speed: u.speed, atkrange: u.atkrange, atk: u.atk, lp: u.lp,
+			lpMax: u.lpMax,   // 开局/读档时一定已按初始 LP 校准，无需兜底
+			disabled: u.disabled,
+			escaped: !!u.escaped
+		}))
 	};
 }
- 
-// 加载游戏 
-function loadGame(game) { 
-	document.body.classList.add('level-opening');   // 从 demo-美化好 移植：开场隐藏战场，等 revealBattlefield() 淡入
-	n = game.n; m = game.m; remain_turns = game.turns_limit; 
-	boardContainer.style.gridTemplateColumns = `repeat(${m}, 1fr)`; 
-	boardContainer.innerHTML = getblock(n, m); 
-	arrowLine = document.getElementById('arrowLine'); 
-	let POS_00 = document.querySelector(`#board .cell[data-row="${0}"][data-col="${0}"]`).getBoundingClientRect(); 
-	let POS_11 = document.querySelector(`#board .cell[data-row="${1}"][data-col="${1}"]`).getBoundingClientRect(); 
-	distance = POS_11.left - POS_00.left; 
-	offset = POS_00.width / 2.0; 
-	/* 加载初始棋盘，计算棋子移动所需常量 */ 
-	/* 棋盘是一个长和宽都是 80dvh 的的窗口，分成 n x m 个 cell，主要是方便布置棋子 */ 
-	/* 在现有的代码中，n 和 m 都保持为 10 */ 
- 
-	document.getElementById('footer-bar').innerHTML = `Win by DESTROYING every <span id="red-hinter" style="font-style: italic; text-decoration: underline;">red</span> army! —— You have ${remain_turns} turns.`; 
-	document.getElementById('red-hinter').addEventListener('click', showRedEffect) ; 
-	/* 加载胜利条件与回合限制 */ 
-	 
-	game.pieces.forEach(element => { 
-		piece = document.createElement('div'); 
-  	piece.className = `chess chess--${element.color}`; 
-		piece.id = `piece-${piece_cnt}`; 
-		piece.innerHTML = getHtmlForPiece(element) 
-  	boardContainer.appendChild(piece); 
-		armys.push({ 
-			id: piece.id, 
-			color: element.color, 
-			posx: element.posx, 
-			posy: element.posy, 
-			speed: element.speed, 
-			targetx: element.posx, 
-			targety: element.posy, 
-			atkrange: element.atkrange, 
-			atk: element.atk, 
-			lp: element.lp, 
-			lpMax: element.lp, 
-			disabled: false, 
-			cls: element.class, 
-			img: element.img || '' 
-		}) ; 
-		movePieceTo(piece.id, -1.0, -1.0); 
-		movePieceTo(piece.id, armys[piece_cnt].posx, armys[piece_cnt].posy); 
-		piece_cnt ++ ; 
-	}) ; 
-	/* 加载棋子 */ 
-	renderOrderArrows(); 
-	showLevelIntro(); 
-} 
- 
-/* 从存档快照恢复一局（to-do #2/#3）：重建棋盘与棋子，字段与 captureSnapshot() 一一对应 */ 
-function loadSnapshot(snap) { 
-	n = snap.n; m = snap.m; remain_turns = snap.remain_turns; piece_cnt = 0; armys = new Array(0); 
-	selectedPieces = []; 
-	selectedEnemies = []; 
-	boardContainer.style.gridTemplateColumns = `repeat(${m}, 1fr)`;
-	boardContainer.innerHTML = getblock(n, m); 
-	arrowLine = document.getElementById('arrowLine'); 
-	let POS_00 = document.querySelector(`#board .cell[data-row="${0}"][data-col="${0}"]`).getBoundingClientRect(); 
-	let POS_11 = document.querySelector(`#board .cell[data-row="${1}"][data-col="${1}"]`).getBoundingClientRect(); 
-	distance = POS_11.left - POS_00.left; 
-	offset = POS_00.width / 2.0; 
-	document.getElementById('footer-bar').innerHTML = `Resumed from save: Level ${snap.level}, ${remain_turns} turns left.`; 
-	if (typeof toast === 'function') toast(`已从存档继续：第 ${snap.level} 关，剩余 ${remain_turns} 回合。`); 
-	snap.units.forEach((u, idx) => { 
-		const piece = document.createElement('div'); 
-		piece.className = `chess chess--${u.color}`; 
-		piece.id = `piece-${piece_cnt}`; 
-		piece.innerHTML = (u.img 
-			? `<img src='./img/${u.img}.png' style='width: 120%; height: 120%;' alt='' draggable='false'></img>` 
-			: `<p>${u.cls}</p>`); 
-		boardContainer.appendChild(piece); 
-		// 满血上限优先取本关配置的初始 LP（修复旧档缺 lpMax 时"上限=存档时当前血量"的老问题） 
-		const cfgLp = (typeof CURRENT_GAME !== 'undefined' && CURRENT_GAME && CURRENT_GAME.pieces && CURRENT_GAME.pieces[idx]) 
-			? CURRENT_GAME.pieces[idx].lp 
-			: null; 
-		const restoredMax = (cfgLp !== null) ? cfgLp : (u.lpMax || u.lp); 
-		const restoredLp = Math.min(u.lp, restoredMax); 
-		armys.push({ 
-			id: piece.id, 
-			color: u.color, 
-			posx: u.posx, posy: u.posy, 
-			speed: u.speed, 
-			targetx: u.targetx, targety: u.targety, 
-			atkrange: u.atkrange, atk: u.atk, lp: restoredLp, 
-			lpMax: restoredMax, 
-			disabled: !!u.disabled, 
-			escaped: !!u.escaped, 
-			cls: u.cls, img: u.img || '' 
-		}); 
-		movePieceTo(piece.id, u.posx, u.posy); 
-		if (u.disabled) { piece.classList.add('disabled'); piece.style.display = 'none'; } 
-		piece_cnt ++; 
-	}); 
-	refreshSelectedUI(); 
-	refreshEnemySelectionUI(); 
-	renderOrderArrows(); 
-	showLevelIntro(); 
-} 
- 
-/* 抓取当前这一局的中途状态（手动存档 / 自动存档都用它） */ 
-function captureSnapshot() { 
-	if (typeof CURRENT_LEVEL_ID === 'undefined') return null; 
-	return { 
-		level: CURRENT_LEVEL_ID, 
-		n: n, m: m, 
-		remain_turns: remain_turns, 
-		units: armys.map(u => ({ 
-			color: u.color, cls: u.cls, img: u.img || '', 
-			posx: u.posx, posy: u.posy, 
-			targetx: u.targetx, targety: u.targety, 
-			speed: u.speed, atkrange: u.atkrange, atk: u.atk, lp: u.lp, 
-			lpMax: u.lpMax,   // 开局/读档时一定已按初始 LP 校准，无需兜底 
-			disabled: u.disabled, 
-			escaped: !!u.escaped 
-		})) 
-	}; 
-} 
- 
-/* 当前登录用户（未登录返回 ''），依赖 account.js */ 
-function currentUserSafe() { 
-	return (typeof currentUser === 'function') ? currentUser() : ''; 
-} 
- 
-/* 刷新关卡内"存档目标"下拉：a.save + 存档1/2/3，标注内容；跨关快照标注"非本关，不可读" */ 
-function refreshSlotSelect() { 
-	const sel = document.getElementById('slot-select'); 
-	if (!sel) return; 
-	sel.innerHTML = ''; 
-	const user = currentUserSafe(); 
-	const auto = user ? getAuto(user) : null; 
-	const lvl = (typeof CURRENT_LEVEL_ID === 'undefined') ? null : CURRENT_LEVEL_ID; 
-	function snapLabel(snap) { 
-		if (!snap) return null; 
-		if (snap.level === lvl) return '（第 ' + snap.level + ' 关，剩 ' + snap.remain_turns + ' 回合）'; 
-		return '（第 ' + snap.level + ' 关 · 非本关，不可读）'; 
-	} 
-	[AUTO_ID].concat(MANUAL_IDS).forEach(function (id) { 
-		const o = document.createElement('option'); 
-		o.value = id; 
-		let extra = '（空）'; 
-		if (id === AUTO_ID) { 
-			if (auto && auto.snapshot) extra = snapLabel(auto.snapshot); 
-			else if (auto && (auto.unlocked > 1 || Object.keys(auto.stars).length)) extra = ''; 
-		} else { 
-			const f = user ? getManual(user, id) : null; 
-			if (f && f.snapshot) extra = snapLabel(f.snapshot); 
-			else if (f && (f.unlocked > 1 || Object.keys(f.stars).length)) extra = ''; 
-		} 
-		o.textContent = fileName(id) + extra; 
-		sel.appendChild(o); 
-	}); 
-	sel.value = AUTO_ID; 
-} 
-refreshSlotSelect(); 
- 
-/* 验收/调试用：控制台向某目标存中途快照（默认 a.save），或清空当前用户全部存档 */ 
-window.__saveMidLevel = function (id) { 
-	if (typeof CURRENT_LEVEL_ID === 'undefined') { console.log('[__saveMidLevel] 不在关卡内'); return; } 
-	const user = currentUserSafe(); 
-	if (!user) { console.log('[__saveMidLevel] 未登录'); return; } 
-	id = isFileId(id) ? String(id) : AUTO_ID; 
-	const snap = captureSnapshot(); 
-	if (!snap) return; 
-	const ok = (id === AUTO_ID) ? saveSnapshotToAuto(user, snap) : saveToManual(user, id, snap); 
-	if (ok) { console.log('[__saveMidLevel] 已保存到 ' + fileName(id)); refreshSlotSelect(); } 
-}; 
 
-window.__clearSave = function () { 
-	const user = currentUserSafe(); 
-	if (user) { 
-		localStorage.removeItem('a.save:' + user); 
-		MANUAL_IDS.forEach(function (id) { localStorage.removeItem('save' + id + ':' + user); }); 
-	} 
-	console.log('[__clearSave] 当前用户的自动存档与手动存档已清空'); 
-}; 
- 
-/* 胜负结算后隐藏"存/读档"与左右显示条（Menu 按钮保留，方便直接退出） */ 
-function hideMidGameControls() { 
-	const el = document.getElementById('save-load-btns'); 
-	if (el) el.style.display = 'none'; 
-	const bar = document.getElementById('info-bar'); 
-	if (bar) bar.style.display = 'none'; 
-	const ebar = document.getElementById('enemy-info'); 
-	if (ebar) ebar.style.display = 'none'; 
-	const rl = document.getElementById('range-layer'); 
-	if (rl) rl.remove(); 
-	rangeCircles = []; 
-} 
-
-/* 结算页（2026-09）：把 Menu 按钮也并进 #result-area，跟胜负面板一起居中。
-   判胜时整条 #game-actions 本来就是隐藏的，所以只在判负分支里调动。 */
-function moveMenuIntoResultArea() {
-	const area = document.getElementById('result-area');
-	const btn = document.getElementById('button-exit');
-	if (area && btn && btn.parentNode !== area) area.appendChild(btn);
+/* 当前登录用户（未登录返回 ''），依赖 account.js */
+function currentUserSafe() {
+	return (typeof currentUser === 'function') ? currentUser() : '';
 }
 
 /* 刷新关卡内"存档目标"下拉：a.save + 存档1/2/3，标注内容；跨关快照标注"非本关，不可读" */
@@ -478,22 +251,23 @@ refreshSlotSelect();
 
 /* 验收/调试用：控制台向某目标存中途快照（默认 a.save），或清空当前用户全部存档 */
 window.__saveMidLevel = function (id) {
-	if (typeof CURRENT_LEVEL_ID === 'undefined') { gameNotice(gameText('game.notInLevel', null, '不在关卡内')); return; }
+	if (typeof CURRENT_LEVEL_ID === 'undefined') { console.log('[__saveMidLevel] 不在关卡内'); return; }
 	const user = currentUserSafe();
-	if (!user) { gameNotice(gameText('game.notLoggedIn', null, '未登录')); return; }
+	if (!user) { console.log('[__saveMidLevel] 未登录'); return; }
 	id = isFileId(id) ? String(id) : AUTO_ID;
 	const snap = captureSnapshot();
 	if (!snap) return;
 	const ok = (id === AUTO_ID) ? saveSnapshotToAuto(user, snap) : saveToManual(user, id, snap);
-	if (ok) { gameNotice(gameText('game.savedTo', { file: fileName(id) }, '已保存到 ' + fileName(id))); refreshSlotSelect(); }
+	if (ok) { console.log('[__saveMidLevel] 已保存到 ' + fileName(id)); refreshSlotSelect(); }
 };
+
 window.__clearSave = function () {
 	const user = currentUserSafe();
 	if (user) {
 		localStorage.removeItem('a.save:' + user);
 		MANUAL_IDS.forEach(function (id) { localStorage.removeItem('save' + id + ':' + user); });
 	}
-	gameNotice(gameText('game.savesCleared', null, '当前用户的自动存档与手动存档已清空'));
+	console.log('[__clearSave] 当前用户的自动存档与手动存档已清空');
 };
 
 /* 胜负结算后隐藏"存/读档"与左右显示条（Menu 按钮保留，方便直接退出） */
@@ -507,6 +281,16 @@ function hideMidGameControls() {
 	const rl = document.getElementById('range-layer');
 	if (rl) rl.remove();
 	rangeCircles = [];
+}
+
+/* 结算页（2026-09）：把 Menu 按钮也并进 #result-area，跟胜负面板一起居中。
+   判胜时整条 #game-actions 本来就是隐藏的，所以只在判负分支里调动。 */
+function moveMenuIntoResultArea() {
+	const area = document.getElementById('result-area');
+	const btn = document.getElementById('button-exit');
+	if (area && btn && btn.parentNode !== area) area.appendChild(btn);
+}
+
 /* 通关结算页的"下一步去哪"（写在 #button-next-game 的 data-target 上）：
    · 下一关是结局页 → 直接进结局（第 7 关单独判：隐藏关通关去隐藏结局）；
    · 否则回主界面，**只有这一关通关真的解锁了新关卡**时才带 ?unlock=N
@@ -538,138 +322,137 @@ function hideResultAlternatives() {
 	const actions = document.getElementById('game-actions');
 	if (actions) actions.style.display = 'none';
 }
- 
-/* 向量归一化，方便计算棋子移动到的位置 */ 
-function normalize(vec) { 
-	const length = Math.sqrt(vec.x * vec.x + vec.y * vec.y); 
-	if(length <= eps) { return {x: 0.0, y: 0.0}; } 
-	return { 
-		x: vec.x / length, 
-		y: vec.y / length 
-	} ; 
-} 
- 
-/* 将棋子的状态设为不能使用的状态的方法 */ 
-function setToDisable(element) { 
-	element.disabled = true; 
-	const piece = document.getElementById(element.id); 
-	piece.classList.add('disabled'); 
-} 
- 
-/* 计算棋子间距离的方法 */ 
-function calcdis(element1, element2) { 
-	let disx = element1.posx - element2.posx, disy = element1.posy - element2.posy; 
-	return Math.sqrt(disx * disx + disy * disy) ; 
-} 
- 
-/* 从 armys 中选出距离 element 最近的异色棋子的方法，用于确认棋子攻击目标 */ 
-function selectMinimalDistance(element, armys) { 
-	let minDisItem = null, minDis = 200.0; 
-	for(let i = 0; i < armys.length; ++ i) { 
-		if(armys[i].disabled) continue ; 
-		if(armys[i].color == element.color) continue ; 
-		let dis = calcdis(element, armys[i]); 
-		if(dis < minDis) { 
-			minDisItem = armys[i]; minDis = dis; 
-		} 
-	} 
-	return minDisItem; 
-} 
- 
-/* 将一个回合分成若干'帧'，每一'帧'分别处理 */ 
-/* 若当前回合棋子攻击范围内有敌人，则攻击最近的敌人 */ 
-/* 否则随机攻击 */ 
-// ===================================================== 
-// 找出“这一小段移动路径”第一次进入哪个敌人的攻击范围 
-// 
-// 返回： 
-// { 
-//     enemy: 敌人, 
-//     t: 0~1，表示沿着本次移动路径走了多少 
-// } 
-// 如果没有进入任何新的攻击范围，则返回 null 
-// ===================================================== 
-function findFirstEnterAttackRange(element, startx, starty, endx, endy) { 
- 
-    let first = null; 
- 
-    const dx = endx - startx; 
-    const dy = endy - starty; 
-    const a = dx * dx + dy * dy; 
- 
-    if (a <= eps) return null; 
- 
-    for (let i = 0; i < armys.length; ++i) { 
- 
-        let enemy = armys[i]; 
- 
-        // 死亡单位跳过 
-        if (enemy.disabled) continue; 
- 
-        // 自己和同阵营跳过 
-        if (enemy.color === element.color) continue; 
- 
-        // ----------------------------------------- 
-        // 如果移动开始时已经在这个敌人的攻击范围内 
-        // 那么这次不把“离开它”当作进入 
-        // ----------------------------------------- 
-        const sx = startx - enemy.posx; 
-        const sy = starty - enemy.posy; 
- 
-        const startDis2 = sx * sx + sy * sy; 
-        const range = Number(element.atkrange); 
- 
-        if (startDis2 <= range * range + eps) { 
-            continue; 
-        } 
- 
-        // ----------------------------------------- 
-        // 求线段与攻击范围圆的第一次交点 
-        // 圆心 = enemy 
-        // 半径 = element.atkrange 
-        // ----------------------------------------- 
-        const fx = startx - enemy.posx; 
-        const fy = starty - enemy.posy; 
- 
-        const b = 2 * (fx * dx + fy * dy); 
-        const c = fx * fx + fy * fy - range * range; 
- 
-        const discriminant = b * b - 4 * a * c; 
- 
-        // 没有交点 
-        if (discriminant < 0) continue; 
- 
-        const sqrtD = Math.sqrt(discriminant); 
- 
-        const t1 = (-b - sqrtD) / (2 * a); 
-        const t2 = (-b + sqrtD) / (2 * a); 
- 
-        // 我们从圆外往圆内走， 
-        // 所以第一次进入圆的是较小的有效 t 
-        let t = null; 
- 
-        if (t1 >= -eps && t1 <= 1 + eps) { 
-            t = t1; 
-        } else if (t2 >= -eps && t2 <= 1 + eps) { 
-            t = t2; 
-        } 
- 
-        if (t === null) continue; 
- 
-        t = Math.max(0, Math.min(1, t)); 
- 
-        if (first === null || t < first.t) { 
-            first = { 
-                enemy: enemy, 
-                t: t 
-            }; 
-        } 
-    } 
- 
-    return first; 
-} 
 
-/*
+/* 向量归一化，方便计算棋子移动到的位置 */
+function normalize(vec) {
+	const length = Math.sqrt(vec.x * vec.x + vec.y * vec.y);
+	if(length <= eps) { return {x: 0.0, y: 0.0}; }
+	return {
+		x: vec.x / length,
+		y: vec.y / length
+	} ;
+}
+
+/* 将棋子的状态设为不能使用的状态的方法 */
+function setToDisable(element) {
+	element.disabled = true;
+	const piece = document.getElementById(element.id);
+	piece.classList.add('disabled');
+}
+
+/* 计算棋子间距离的方法 */
+function calcdis(element1, element2) {
+	let disx = element1.posx - element2.posx, disy = element1.posy - element2.posy;
+	return Math.sqrt(disx * disx + disy * disy) ;
+}
+
+/* 从 armys 中选出距离 element 最近的异色棋子的方法，用于确认棋子攻击目标 */
+function selectMinimalDistance(element, armys) {
+	let minDisItem = null, minDis = 200.0;
+	for(let i = 0; i < armys.length; ++ i) {
+		if(armys[i].disabled) continue ;
+		if(armys[i].color == element.color) continue ;
+		let dis = calcdis(element, armys[i]);
+		if(dis < minDis) {
+			minDisItem = armys[i]; minDis = dis;
+		}
+	}
+	return minDisItem;
+}
+
+/* 将一个回合分成若干'帧'，每一'帧'分别处理 */
+/* 若当前回合棋子攻击范围内有敌人，则攻击最近的敌人 */
+/* 否则随机攻击 */
+// =====================================================
+// 找出“这一小段移动路径”第一次进入哪个敌人的攻击范围
+//
+// 返回：
+// {
+//     enemy: 敌人,
+//     t: 0~1，表示沿着本次移动路径走了多少
+// }
+// 如果没有进入任何新的攻击范围，则返回 null
+// =====================================================
+function findFirstEnterAttackRange(element, startx, starty, endx, endy) {
+
+    let first = null;
+
+    const dx = endx - startx;
+    const dy = endy - starty;
+    const a = dx * dx + dy * dy;
+
+    if (a <= eps) return null;
+
+    for (let i = 0; i < armys.length; ++i) {
+
+        let enemy = armys[i];
+
+        // 死亡单位跳过
+        if (enemy.disabled) continue;
+
+        // 自己和同阵营跳过
+        if (enemy.color === element.color) continue;
+
+        // -----------------------------------------
+        // 如果移动开始时已经在这个敌人的攻击范围内
+        // 那么这次不把“离开它”当作进入
+        // -----------------------------------------
+        const sx = startx - enemy.posx;
+        const sy = starty - enemy.posy;
+
+        const startDis2 = sx * sx + sy * sy;
+        const range = Number(element.atkrange);
+
+        if (startDis2 <= range * range + eps) {
+            continue;
+        }
+
+        // -----------------------------------------
+        // 求线段与攻击范围圆的第一次交点
+        // 圆心 = enemy
+        // 半径 = element.atkrange
+        // -----------------------------------------
+        const fx = startx - enemy.posx;
+        const fy = starty - enemy.posy;
+
+        const b = 2 * (fx * dx + fy * dy);
+        const c = fx * fx + fy * fy - range * range;
+
+        const discriminant = b * b - 4 * a * c;
+
+        // 没有交点
+        if (discriminant < 0) continue;
+
+        const sqrtD = Math.sqrt(discriminant);
+
+        const t1 = (-b - sqrtD) / (2 * a);
+        const t2 = (-b + sqrtD) / (2 * a);
+
+        // 我们从圆外往圆内走，
+        // 所以第一次进入圆的是较小的有效 t
+        let t = null;
+
+        if (t1 >= -eps && t1 <= 1 + eps) {
+            t = t1;
+        } else if (t2 >= -eps && t2 <= 1 + eps) {
+            t = t2;
+        }
+
+        if (t === null) continue;
+
+        t = Math.max(0, Math.min(1, t));
+
+        if (first === null || t < first.t) {
+            first = {
+                enemy: enemy,
+                t: t
+            };
+        }
+    }
+
+    return first;
+}
+
 function nextStep() {
 	let disabledList = new Array();
 
@@ -708,6 +491,7 @@ function nextStep() {
 			// 已经到达目标，如果在攻击范围内，就攻击
 			if(inAttackRange) {
 				atktar.lp -= element.atk;
+				if (typeof fxMarkFired === 'function') fxMarkFired(element, atktar);
 
 				if(atktar.lp <= 0)
 					disabledList.push(atktar);
@@ -741,6 +525,7 @@ function nextStep() {
 				// 正在靠近敌人/没有离开
 				// 保持原来的攻击逻辑
 				atktar.lp -= element.atk;
+				if (typeof fxMarkFired === 'function') fxMarkFired(element, atktar);
 
 				if(atktar.lp <= 0)
 					disabledList.push(atktar);
@@ -763,6 +548,7 @@ function nextStep() {
 		element.posy = element.posy + targetvector.y * element.speed;
 
 		// 防止移过目标位置
+
 		let afterMove = (element.targetx - element.posx > eps);
 
 		if(beforeMove != afterMove) {
@@ -771,6 +557,7 @@ function nextStep() {
 		}
 
 		movePieceTo(element.id, element.posx, element.posy);
+		if (typeof fxMarkMoving === 'function') fxMarkMoving(element);
 	});
 
 	// ============================================
@@ -781,10 +568,12 @@ function nextStep() {
 		setToDisable(element);
 	});
 }
+
+
 /* 将灰色的濒死棋子移除 */
 function clearDisable() {
 	armys.forEach(element => {
-		if(element.disabled == true) { 
+		if(element.disabled == true) {
 			const piece = document.getElementById(element.id);
 			piece.style.display = 'none' ;
 			return ;
@@ -792,331 +581,25 @@ function clearDisable() {
 	});
 }
 
-function showWinResult() {
-	const win = document.getElementById('win');
-	const next = document.getElementById('button-next-game');
-	if (!win || !next) return;
-	document.body.classList.add('result-active');
-	win.style.cssText = 'display:flex; flex-direction:column; align-items:center;';
-	next.style.cssText = 'display:inline-flex;';
-	/* 让按钮成为战果卡片的一部分，卡片连同按钮一起在视口正中央。 */
-	if (next.parentNode !== win) win.appendChild(next);
-	if (typeof applyUiTranslations === 'function') applyUiTranslations(win);
-	next.focus();
-}
-
-function victoryReportText(star, saveResult) {
-	const result = saveResult || { saved: false, openedHidden: false };
-	let saveMessage = result.saved
-		? gameText('victory.saved', null, '战果已自动保存到 a.save。')
-		: gameText('victory.notSaved', null, '当前未登录，本次战果没有写入存档。');
-	if (result.openedHidden) {
-		saveMessage += ' ' + gameText('victory.hidden', null, '历史出现了新的岔路：秘密路线已经开启。');
-	}
-	return gameText('victory.summary', {
-		level: (typeof CURRENT_LEVEL_ID === 'undefined' ? '?' : CURRENT_LEVEL_ID),
-		stars: star,
-		save: saveMessage
-	}, '本关战斗结束：本次获得 ' + star + ' 星。' + saveMessage);
-}
-
-/* 通关也走与开场完全相同的剧情对话引擎，不再调用浏览器 alert。 */
-function showVictoryDialogue(star, saveResult) {
-	const meta = (typeof getLevelById === 'function' && typeof CURRENT_LEVEL_ID !== 'undefined')
-		? getLevelById(CURRENT_LEVEL_ID)
-		: null;
-	const chapter = meta ? meta.chapter : '帝国战记';
-	const location = meta ? meta.location : '';
-	const scene = meta ? meta.scene : 'campaign';
-	const lines = [
-		{
-			who: '拿破仑', role: '法兰西皇帝', side: 'left',
-			portrait: 'img/portraits/napoleon.png',
-			chapter: chapter, location: location, scene: scene,
-			text: function () { return gameText('victory.napoleon', null, '敌军已经退出战场。收拢队伍，把鹰旗带到下一条战线。'); }
-		},
-		{
-			who: function () { return gameText('victory.reporter', null, '战报'); },
-			role: function () { return gameText('victory.role', null, '帝国统帅部'); },
-			kind: 'briefing', chapter: chapter, location: location, scene: scene,
-			text: function () { return victoryReportText(star, saveResult); },
-			actionLabel: function () { return gameText('victory.viewResult', null, '查看战果'); }
-		}
-	];
-	if (typeof playDialogue === 'function') playDialogue(lines, showWinResult);
-	else showWinResult();
-}
-
 /* 检查胜负状态 */
-function checkWinState() {
-	-- remain_turns;
-	let redc = 0, bluec = 0;
-	armys.forEach(element => {
-		if(element.disabled == false) {
-			if(element.color == 'red') ++ redc;
-			if(element.color == 'blue') ++ bluec;
+/* to-do 收尾：追猎战（第 4 关）——红方"到达右上角"才算成功撤退（右边界与上边界同时满足，标记 escaped 并移出棋盘） */
+function processTurnEscapes() {
+	const obj = (typeof CURRENT_GAME !== 'undefined' && CURRENT_GAME && CURRENT_GAME.objective &&
+		CURRENT_GAME.objective.type === 'retreat') ? CURRENT_GAME.objective : null;
+	if (!obj) return;
+	const exitX = (obj.exitX !== undefined) ? obj.exitX : 9.5;
+	const exitY = (obj.exitY !== undefined) ? obj.exitY : -0.5;
+	armys.forEach(u => {
+		if (u.color !== 'red' || u.disabled || u.escaped) return;
+		if (u.posx >= exitX && u.posy <= exitY) {
+			console.log(`${u.id} is escaped!`);
+			u.escaped = true;
+			u.disabled = true;
+			const el = document.getElementById(u.id);
+			if (el) el.style.display = 'none';
 		}
-	}) ;
-	// 计算红蓝色棋子数量
-
-	if(redc == 0) {
-		// 没有红棋则获胜，根据剩余蓝棋数量给出星级
-		boardContainer.style.display = 'none';
-		buttonContainer.style = 'display: none;';
-		document.getElementById('footer-bar').style = 'display: none';
-		document.getElementById('win').style.display = 'none';
-		document.getElementById('button-next-game').style.display = 'none';
-		document.body.classList.remove('result-active');
-		// 先计算战果，剧情对白结束后再加载中央胜利界面
-		const star = (bluec == 0) ? 1 : (bluec == 1) ? 2 : 3;
-		['1star', '2star', '3star'].forEach(function (id) {
-			document.getElementById(id).style.display = 'none';
-		});
-		if(star == 1) {
-			const winState = document.getElementById('1star');
-			winState.style.display = '' ;
-		} else if(star == 2) {
-			const winState = document.getElementById('2star');
-			winState.style.display = '' ;
-		} else {
-			const winState = document.getElementById('3star');
-			winState.style.display = '' ;
-		}
-		// 通关自动存档（to-do #2/#3/#14）：记星级、解锁下一关、清掉快照；第 1 关 ≤12 回合通关开隐藏路线
-		const usedTurns = (typeof CURRENT_GAME !== 'undefined' && CURRENT_GAME && CURRENT_GAME.turns_limit)
-			? CURRENT_GAME.turns_limit - remain_turns
-			: 99;
-		const quickL1 = usedTurns <= 12;
-		let saveResult = { saved: false, openedHidden: false };
-		if(typeof autosaveOnWin === 'function' && typeof CURRENT_LEVEL_ID !== 'undefined') {
-			saveResult = autosaveOnWin(CURRENT_LEVEL_ID, star, quickL1) || saveResult;
-		}
-		// to-do #15：连败≥4 后 3 星通关 -> "失败乃成功之母"
-		if (typeof tryThreeStarAchievement === 'function' && typeof CURRENT_LEVEL_ID !== 'undefined') {
-			tryThreeStarAchievement(CURRENT_LEVEL_ID, star);
-		}
-		hideMidGameControls();
-		showVictoryDialogue(star, saveResult);
-		return ;
-	}
-	if(bluec == 0 || remain_turns == 0) {
-		// 如果没有蓝棋时还有红棋，或者剩余回合数为 0，则本关失败
-		boardContainer.style.display = 'none';
-		buttonContainer.style = 'display: none;';
-		document.getElementById('lose').style = 'display: flex; flex-direction: column; align-items: center;' ;
-		document.getElementById('footer-bar').style = 'display: none';
-		document.getElementById('button-replay').style = 'width: 100px; height: 50px;';
-		const failBtn = document.getElementById('button-fail');
-		if (failBtn) {
-			failBtn.style.cssText = 'width:auto; margin-top:8px;';
-			if (CURRENT_LEVEL_ID === 7) {
-				// 隐藏第 7 关的失败有专属结局：命运无法改变
-				failBtn.dataset.target = 'destiny-fail.html';
-				failBtn.dataset.i18n = 'game.endingDestiny';
-				failBtn.textContent = gameText('game.endingDestiny', null, '看结局：命运无法改变');
-			} else {
-				failBtn.dataset.target = 'fail.html';
-				failBtn.dataset.i18n = 'game.endingEarly';
-				failBtn.textContent = gameText('game.endingEarly', null, '查看结局：提早失利');
-			}
-		}
-		// to-do #15：记录同关连续失败次数
-		if (typeof recordLevelFail === 'function' && typeof CURRENT_LEVEL_ID !== 'undefined') {
-			recordLevelFail(CURRENT_LEVEL_ID);
-		}
-		let tip = loseTips[Math.floor(Math.random() * loseTips.length)]
-		if (CURRENT_LEVEL_ID === 7) tip = '……帝国第二次折戟于此，命运没有给历史第二次机会。';
-		document.getElementById('loseTips').style = '';
-		document.getElementById('loseTips').dataset.sourceText = tip;
-		document.getElementById('loseTips').textContent = gameContent(tip);
-		hideMidGameControls();
-		return ;
-	}
-
-	footerMode = 'turn';
-	renderFooterStatus();
-	/* 加载剩余回合数 */
-	let disabledList = new Array(); 
-	armys.forEach(element => { 
-		if(element.disabled == true) return ; 
- 
-		let atktar = selectMinimalDistance(element, armys) ; 
-		// 选出可能的攻击目标 
-		if(atktar != null) { 
-			// 判断攻击能否成立 
-			if(calcdis(element, atktar) < element.atkrange) { 
-				// 进行攻击，结算伤害 
-				atktar.lp -= element.atk; 
-				if(atktar.lp <= 0) disabledList.push(atktar); 
-				// console.log(`atk between ${element.id} with ${atktar.id}, the latter's LP become ${atktar.lp}`); 
-				return ; 
-			} 
-		} 
-		// 按照向量指示的方位移动棋子 
-		let targetvector = normalize({x: element.targetx - element.posx, y: element.targety - element.posy}); 
-		let beforeMove = (element.targetx - element.posx > eps) 
-		// console.log(`for piece${element.id}, move from (${element.posx}, ${element.posy}) to (${element.posx + targetvector.x * element.speed}, ${element.posy + targetvector.y * element.speed})`); 
-		element.posx = element.posx + targetvector.x * element.speed ; 
-		element.posy = element.posy + targetvector.y * element.speed ; 
-		// 检查是否移过头了，如果移过头了就改为移动到目标位置 
-		let afterMove = (element.targetx - element.posx > eps); 
-		if(beforeMove != afterMove) element.posx = element.targetx, element.posy = element.targety; 
-		movePieceTo(element.id, element.posx, element.posy); 
-	}); 
-	disabledList.forEach(element => { 
-		setToDisable(element) ; 
-	}) ;
+	});
 }
-*/
-
-
-function nextStep() { 
-	let disabledList = new Array(); 
- 
-	armys.forEach(element => { 
-		if(element.disabled == true) return; 
- 
-		let atktar = selectMinimalDistance(element, armys); 
- 
-		// ============================================ 
-		// 先判断当前位置是否在最近敌人的攻击范围内 
-		// ============================================ 
- 
-		let inAttackRange = false; 
- 
-		if(atktar != null) { 
-			inAttackRange = calcdis(element, atktar) < element.atkrange; 
-		} 
- 
-		// ============================================ 
-		// 计算当前目标方向 
-		// ============================================ 
- 
-		let targetvector = normalize({ 
-			x: element.targetx - element.posx, 
-			y: element.targety - element.posy 
-		}); 
- 
-		// ============================================ 
-		// 判断是否已经到达目标 
-		// ============================================ 
- 
-		if( 
-			Math.abs(element.targetx - element.posx) <= eps && 
-			Math.abs(element.targety - element.posy) <= eps 
-		) { 
-			// 已经到达目标，如果在攻击范围内，就攻击 
-			if(inAttackRange) { 
-				atktar.lp -= element.atk;
-				if (typeof fxMarkFired === 'function') fxMarkFired(element, atktar); 
- 
-				if(atktar.lp <= 0) 
-					disabledList.push(atktar); 
-			} 
- 
-			return; 
-		} 
- 
-		// ============================================ 
-		// 如果目前在攻击范围内 
-		// 判断移动方向是不是在“离开敌人” 
-		// ============================================ 
- 
-		if(inAttackRange) { 
- 
-			// 从当前点指向目标点 
-			let moveX = element.targetx - element.posx; 
-			let moveY = element.targety - element.posy; 
- 
-			// 当前棋子指向敌人的向量 
-			let enemyX = atktar.posx - element.posx; 
-			let enemyY = atktar.posy - element.posy; 
- 
-			// 点积 
-			let dot = moveX * enemyX + moveY * enemyY; 
- 
-			// dot < 0： 
-			// 移动方向与“指向敌人”的方向相反 
-			// 也就是正在远离敌人 
-			if(dot >= 0) { 
-				// 正在靠近敌人/没有离开 
-				// 保持原来的攻击逻辑 
-				atktar.lp -= element.atk;
-				if (typeof fxMarkFired === 'function') fxMarkFired(element, atktar); 
- 
-				if(atktar.lp <= 0) 
-					disabledList.push(atktar); 
- 
-				return; 
-			} 
- 
-			// dot < 0 
-			// 正在离开敌人 
-			// 不攻击，继续往外走 
-		} 
- 
-		// ============================================ 
-		// 按照原来的逻辑移动一步 
-		// ============================================ 
- 
-		let beforeMove = (element.targetx - element.posx > eps); 
- 
-		element.posx = element.posx + targetvector.x * element.speed; 
-		element.posy = element.posy + targetvector.y * element.speed; 
- 
-		// 防止移过目标位置 
- 
-		let afterMove = (element.targetx - element.posx > eps); 
- 
-		if(beforeMove != afterMove) { 
-			element.posx = element.targetx; 
-			element.posy = element.targety; 
-		} 
- 
-		movePieceTo(element.id, element.posx, element.posy);
-		if (typeof fxMarkMoving === 'function') fxMarkMoving(element); 
-	}); 
- 
-	// ============================================ 
-	// 统一处理死亡单位 
-	// ============================================ 
- 
-	disabledList.forEach(element => { 
-		setToDisable(element); 
-	}); 
-} 
-
-
-/* 将灰色的濒死棋子移除 */ 
-function clearDisable() { 
-	armys.forEach(element => { 
-		if(element.disabled == true) {  
-			const piece = document.getElementById(element.id); 
-			piece.style.display = 'none' ; 
-			return ; 
-		} 
-	}); 
-} 
- 
-/* 检查胜负状态 */ 
-/* to-do 收尾：追猎战（第 4 关）——红方"到达右上角"才算成功撤退（右边界与上边界同时满足，标记 escaped 并移出棋盘） */ 
-function processTurnEscapes() { 
-	const obj = (typeof CURRENT_GAME !== 'undefined' && CURRENT_GAME && CURRENT_GAME.objective && 
-		CURRENT_GAME.objective.type === 'retreat') ? CURRENT_GAME.objective : null; 
-	if (!obj) return; 
-	const exitX = (obj.exitX !== undefined) ? obj.exitX : 9.5; 
-	const exitY = (obj.exitY !== undefined) ? obj.exitY : -0.5; 
-	armys.forEach(u => { 
-		if (u.color !== 'red' || u.disabled || u.escaped) return; 
-		if (u.posx >= exitX && u.posy <= exitY) { 
-			console.log(`${u.id} is escaped!`); 
-			u.escaped = true; 
-			u.disabled = true; 
-			const el = document.getElementById(u.id); 
-			if (el) el.style.display = 'none'; 
-		} 
-	}); 
-} 
 
 
 /* 结算页上的通关提示文字（2026-09：替代通关 alert；由 save.js 的 autosaveOnWin 调用） */
@@ -1132,16 +615,88 @@ function showWinNote(text) {
 	}
 	note.textContent = text;
 }
-function checkWinState() { 
-	-- remain_turns; 
-	let redc = 0, bluec = 0; 
 
-	armys.forEach(element => { 
-		if(element.disabled == false) { 
-			if(element.color == 'red') ++ redc; 
-			if(element.color == 'blue') ++ bluec; 
-		} 
-	}); 
+function showWinResult() {
+	const win = document.getElementById('win');
+	const next = document.getElementById('button-next-game');
+	if (!win || !next) return;
+	document.body.classList.add('result-active');
+	win.style.cssText = 'display:flex; flex-direction:column; align-items:center;';
+	next.style.cssText = 'display:inline-flex;';
+	/* 让按钮成为战果卡片的一部分，与卡片一起在页面中央显示。 */
+	if (next.parentNode !== win) win.appendChild(next);
+	if (typeof applyUiTranslations === 'function') applyUiTranslations(win);
+	next.focus();
+}
+
+function victoryReportText(star, saveResult) {
+	const result = saveResult || { saved: false, openedHidden: false };
+	let saveMessage = result.saved
+		? gameText('victory.saved', null, '战果已自动保存到 a.save。')
+		: gameText('victory.notSaved', null, '当前未登录，本次战果没有写入存档。');
+	if (result.openedHidden) saveMessage += ' ' + gameText('victory.hidden', null, '历史出现了新的岔路：秘密路线已经开启。');
+	return gameText('victory.summary', {
+		level: (typeof CURRENT_LEVEL_ID === 'undefined' ? '?' : CURRENT_LEVEL_ID),
+		stars: star,
+		save: saveMessage
+	}, '本关战斗结束：本次获得 ' + star + ' 星。' + saveMessage);
+}
+
+/* 通关使用与开场相同的对话引擎，避免浏览器顶部 alert。 */
+function showVictoryDialogue(star, saveResult) {
+	const meta = (typeof getLevelById === 'function' && typeof CURRENT_LEVEL_ID !== 'undefined')
+		? getLevelById(CURRENT_LEVEL_ID)
+		: null;
+	const lines = [
+		{
+			who: '拿破仑', role: '法兰西皇帝', side: 'left',
+			portrait: 'img/portraits/napoleon.png',
+			chapter: meta ? meta.chapter : '帝国战记', location: meta ? meta.location : '', scene: meta ? meta.scene : 'campaign',
+			text: function () { return gameText('victory.napoleon', null, '敌军已经退出战场。收拢队伍，把鹰旗带到下一条战线。'); }
+		},
+		{
+			who: function () { return gameText('victory.reporter', null, '战报'); },
+			role: function () { return gameText('victory.role', null, '帝国统帅部'); },
+			kind: 'briefing', chapter: meta ? meta.chapter : '帝国战记', location: meta ? meta.location : '', scene: meta ? meta.scene : 'campaign',
+			text: function () { return victoryReportText(star, saveResult); },
+			actionLabel: function () { return gameText('victory.viewResult', null, '查看战果'); }
+		}
+	];
+	if (typeof playDialogue === 'function') playDialogue(lines, showWinResult);
+	else showWinResult();
+}
+
+/* 三类关卡的胜利分支共用一个收尾，防止存档、成就和提示重复执行。 */
+function completeVictory(star, quickL1) {
+	const win = document.getElementById('win');
+	const next = document.getElementById('button-next-game');
+	if (win) win.style.display = 'none';
+	if (next) {
+		next.style.display = 'none';
+		if (typeof CURRENT_LEVEL_ID !== 'undefined') next.dataset.target = winTargetFor(CURRENT_LEVEL_ID);
+	}
+	document.body.classList.remove('result-active');
+	hideResultAlternatives();
+	let saveResult = { saved: false, openedHidden: false };
+	if (typeof autosaveOnWin === 'function' && typeof CURRENT_LEVEL_ID !== 'undefined') {
+		saveResult = autosaveOnWin(CURRENT_LEVEL_ID, star, !!quickL1) || saveResult;
+	}
+	if (typeof tryThreeStarAchievement === 'function' && typeof CURRENT_LEVEL_ID !== 'undefined') {
+		tryThreeStarAchievement(CURRENT_LEVEL_ID, star);
+	}
+	hideMidGameControls();
+	showVictoryDialogue(star, saveResult);
+}
+function checkWinState() {
+	-- remain_turns;
+	let redc = 0, bluec = 0;
+
+	armys.forEach(element => {
+		if(element.disabled == false) {
+			if(element.color == 'red') ++ redc;
+			if(element.color == 'blue') ++ bluec;
+		}
+	});
 
 	/* =========================================================
 	 * Game5（2026-09 起：这场攻城战由第 5 关承载，与第 6 关整体对调）：滑铁卢·限时攻坚
@@ -1166,12 +721,6 @@ function checkWinState() {
 			boardContainer.style.display = 'none';
 			buttonContainer.style = 'display: none;';
 			document.getElementById('footer-bar').style = 'display: none';
-
-			document.getElementById('win').style =
-				'display: flex; flex-direction: column; align-items: center;';
-
-			document.getElementById('button-next-game').style =
-				'width: 100px; height: 50px;';
 
 			/* 根据通关步数计算星级 */
 			let star;
@@ -1200,43 +749,7 @@ function checkWinState() {
 				if(winState) winState.style.display = '';
 			}
 
-			/* 2026-09：结算页只留一个 Next —— 与通用通关分支保持一致：
-			   隐藏 Replay / 结局按钮与整条操作区（含 Menu）；并把"下一步去哪"写进 data-target。
-			   必须放在下面的 autosaveOnWin() 之前，winTargetFor 要靠它读通关前的 unlocked。 */
-			hideResultAlternatives();
-
-			const _nextBtn5 = document.getElementById('button-next-game');
-
-			if(_nextBtn5 && typeof CURRENT_LEVEL_ID !== 'undefined') {
-				_nextBtn5.dataset.target = winTargetFor(CURRENT_LEVEL_ID);
-			}
-
-			/* 自动存档 */
-			const quickL1 = false;
-
-			if(
-				typeof autosaveOnWin === 'function' &&
-				typeof CURRENT_LEVEL_ID !== 'undefined'
-			) {
-				autosaveOnWin(
-					CURRENT_LEVEL_ID,
-					star,
-					quickL1
-				);
-			}
-
-			/* 三星成就 */
-			if(
-				typeof tryThreeStarAchievement === 'function' &&
-				typeof CURRENT_LEVEL_ID !== 'undefined'
-			) {
-				tryThreeStarAchievement(
-					CURRENT_LEVEL_ID,
-					star
-				);
-			}
-
-			hideMidGameControls();
+			completeVictory(star, false);
 
 			return;
 		}
@@ -1329,7 +842,7 @@ function checkWinState() {
 		return;
 	}
 
-	// 计算红蓝色棋子数量 
+	// 计算红蓝色棋子数量
 
 
 	/* ============================================================
@@ -1512,13 +1025,6 @@ function checkWinState() {
 			document.getElementById('footer-bar').style =
 				'display: none';
 
-			document.getElementById('win').style =
-				'display: flex; flex-direction: column; align-items: center;';
-
-			document.getElementById('button-next-game').style =
-				'width: 100px; height: 50px;';
-
-
 			/* 根据突破人数计算星级 */
 
 			let star;
@@ -1618,32 +1124,7 @@ function checkWinState() {
 				usedTurns <= 12;
 
 
-			if(
-				typeof autosaveOnWin === 'function' &&
-				typeof CURRENT_LEVEL_ID !== 'undefined'
-			) {
-
-				autosaveOnWin(
-					CURRENT_LEVEL_ID,
-					star,
-					quickL1
-				);
-			}
-
-
-			if(
-				typeof tryThreeStarAchievement === 'function' &&
-				typeof CURRENT_LEVEL_ID !== 'undefined'
-			) {
-
-				tryThreeStarAchievement(
-					CURRENT_LEVEL_ID,
-					star
-				);
-			}
-
-
-			hideMidGameControls();
+			completeVictory(star, quickL1);
 
 			return;
 		}
@@ -1684,112 +1165,93 @@ function checkWinState() {
 	 * 以下全部保持原来的 Game1~Game7 代码
 	 * ========================================================= */
 
-	// 追逐战（第 4 关）特殊结算：按"逃脱数"给星；逃脱≥loseEscape 判负 
-	const retreatObj = (typeof CURRENT_GAME !== 'undefined' && CURRENT_GAME && CURRENT_GAME.objective && 
-		CURRENT_GAME.objective.type === 'retreat') ? CURRENT_GAME.objective : null; 
-	const retreat = !!retreatObj; 
-	const retreatLose = retreatObj ? (retreatObj.loseEscape || 3) : 99; 
-	const escaped = armys.filter(u => u.color === 'red' && !!u.escaped).length; 
- 
-	if(redc == 0 && !(retreat && escaped >= retreatLose)) { 
-		// 没有红棋则获胜，根据剩余蓝棋数量给出星级（追逐战按逃脱数） 
-		boardContainer.style.display = 'none'; 
-		buttonContainer.style = 'display: none;'; 
-		document.getElementById('footer-bar').style = 'display: none'; 
-		document.getElementById('win').style = 'display: flex; flex-direction: column; align-items: center;' ; 
-		document.getElementById('button-next-game').style = 'width: 100px; height: 50px;'; 
-		// 2026-09：结算页只留一个 Next —— 隐藏 Replay/结局按钮与整条操作区（含 Menu 按钮），
-		// 并把这一关的"下一步去哪"算好写在 data-target 上（点击处理器只负责跳转）。
-		// 带不带 ?unlock=N 由 winTargetFor() 判断（重打老关卡不带，避免白播一次地图动画）。
-		hideResultAlternatives();
-		const _nextBtn = document.getElementById('button-next-game');
-		if (_nextBtn && typeof CURRENT_LEVEL_ID !== 'undefined') {
-			_nextBtn.dataset.target = winTargetFor(CURRENT_LEVEL_ID);
-		}
-		// 加载胜利界面 
-		const star = retreat ? [3, 2, 1][Math.min(escaped, 2)] : ((bluec == 0) ? 1 : (bluec == 1) ? 2 : 3); 
-		if(star == 1) { 
-			const winState = document.getElementById('1star'); 
-			winState.style.display = '' ; 
-		} else if(star == 2) { 
-			const winState = document.getElementById('2star'); 
-			winState.style.display = '' ; 
-		} else { 
-			const winState = document.getElementById('3star'); 
-			winState.style.display = '' ; 
-		} 
-		// 通关自动存档（to-do #2/#3/#14）：记星级、解锁下一关、清掉快照；第 1 关 ≤12 回合通关开隐藏路线 
-		const usedTurns = (typeof CURRENT_GAME !== 'undefined' && CURRENT_GAME && CURRENT_GAME.turns_limit) 
-			? CURRENT_GAME.turns_limit - remain_turns 
-			: 99; 
-		const quickL1 = usedTurns <= 12; 
-		if(typeof autosaveOnWin === 'function' && typeof CURRENT_LEVEL_ID !== 'undefined') { 
-			autosaveOnWin(CURRENT_LEVEL_ID, star, quickL1); 
-		} 
-		// to-do #15：连败≥4 后 3 星通关 -> "失败乃成功之母" 
-		if (typeof tryThreeStarAchievement === 'function' && typeof CURRENT_LEVEL_ID !== 'undefined') { 
-			tryThreeStarAchievement(CURRENT_LEVEL_ID, star); 
-		} 
-		hideMidGameControls(); 
-		return ; 
-	} 
+	// 追逐战（第 4 关）特殊结算：按"逃脱数"给星；逃脱≥loseEscape 判负
+	const retreatObj = (typeof CURRENT_GAME !== 'undefined' && CURRENT_GAME && CURRENT_GAME.objective &&
+		CURRENT_GAME.objective.type === 'retreat') ? CURRENT_GAME.objective : null;
+	const retreat = !!retreatObj;
+	const retreatLose = retreatObj ? (retreatObj.loseEscape || 3) : 99;
+	const escaped = armys.filter(u => u.color === 'red' && !!u.escaped).length;
 
-	if((retreat && escaped >= retreatLose) || bluec == 0 || remain_turns == 0) { 
-		// 追逐战逃脱数超限 / 蓝方全灭 / 回合耗尽：判负 
-		boardContainer.style.display = 'none'; 
-		buttonContainer.style = 'display: none;'; 
-		document.getElementById('lose').style = 'display: flex; flex-direction: column; align-items: center;' ; 
-		document.getElementById('footer-bar').style = 'display: none'; 
-		document.getElementById('button-replay').style = 'width: 100px; height: 50px;'; 
+	if(redc == 0 && !(retreat && escaped >= retreatLose)) {
+		// 没有红棋则获胜，根据剩余蓝棋数量给出星级（追逐战按逃脱数）
+		boardContainer.style.display = 'none';
+		buttonContainer.style = 'display: none;';
+		document.getElementById('footer-bar').style = 'display: none';
+		// 加载胜利界面
+		const star = retreat ? [3, 2, 1][Math.min(escaped, 2)] : ((bluec == 0) ? 1 : (bluec == 1) ? 2 : 3);
+		if(star == 1) {
+			const winState = document.getElementById('1star');
+			winState.style.display = '' ;
+		} else if(star == 2) {
+			const winState = document.getElementById('2star');
+			winState.style.display = '' ;
+		} else {
+			const winState = document.getElementById('3star');
+			winState.style.display = '' ;
+		}
+		// 通关自动存档（to-do #2/#3/#14）：记星级、解锁下一关、清掉快照；第 1 关 ≤12 回合通关开隐藏路线
+		const usedTurns = (typeof CURRENT_GAME !== 'undefined' && CURRENT_GAME && CURRENT_GAME.turns_limit)
+			? CURRENT_GAME.turns_limit - remain_turns
+			: 99;
+		const quickL1 = usedTurns <= 12;
+		completeVictory(star, quickL1);
+		return ;
+	}
+
+	if((retreat && escaped >= retreatLose) || bluec == 0 || remain_turns == 0) {
+		// 追逐战逃脱数超限 / 蓝方全灭 / 回合耗尽：判负
+		boardContainer.style.display = 'none';
+		buttonContainer.style = 'display: none;';
+		document.getElementById('lose').style = 'display: flex; flex-direction: column; align-items: center;' ;
+		document.getElementById('footer-bar').style = 'display: none';
+		document.getElementById('button-replay').style = 'width: 100px; height: 50px;';
 		moveMenuIntoResultArea();
-		const failBtn = document.getElementById('button-fail'); 
-		if (failBtn) { 
-			failBtn.style.cssText = 'width:auto; margin-top:8px;'; 
-			if (CURRENT_LEVEL_ID === 7) { 
-				// 隐藏第 7 关的失败有专属结局：命运无法改变 
-				failBtn.dataset.target = 'destiny-fail.html'; 
-				failBtn.textContent = 'View Ending: Destined to fail'; 
-			} else { 
-				failBtn.dataset.target = 'fail.html'; 
-				failBtn.textContent = 'View Ending: Early Defeat'; 
-			} 
-		} 
-		// to-do #15：记录同关连续失败次数 
-		if (typeof recordLevelFail === 'function' && typeof CURRENT_LEVEL_ID !== 'undefined') { 
-			recordLevelFail(CURRENT_LEVEL_ID); 
-		} 
-		let tip = loseTips[Math.floor(Math.random() * loseTips.length)] 
-		if (CURRENT_LEVEL_ID === 7) tip = '……帝国第二次折戟于此，命运没有给历史第二次机会。'; 
-		document.getElementById('loseTips').style = ''; 
-		document.getElementById('loseTips').innerHTML = tip; 
-		hideMidGameControls(); 
-		return ; 
-	} 
- 
-	if(remain_turns <= 5) { 
-		document.getElementById('footer-bar').innerHTML = `You ONLY have ${remain_turns} turns.`; 
-	} else if(remain_turns <= 10) { 
-		document.getElementById('footer-bar').innerHTML = `You still have ${remain_turns} turns.`; 
-	} else { 
-		document.getElementById('footer-bar').innerHTML = `You have ${remain_turns} turns.`; 
-	} 
-	/* 加载剩余回合数 */ 
-} 
- 
-buttonContainer.addEventListener('click', function() { 
-	// 点击按钮时推进 24 '帧' 
-	clearDisable(); 
+		const failBtn = document.getElementById('button-fail');
+		if (failBtn) {
+			failBtn.style.cssText = 'width:auto; margin-top:8px;';
+			if (CURRENT_LEVEL_ID === 7) {
+				// 隐藏第 7 关的失败有专属结局：命运无法改变
+				failBtn.dataset.target = 'destiny-fail.html';
+				failBtn.dataset.i18n = 'game.endingDestiny';
+				failBtn.textContent = gameText('game.endingDestiny', null, '查看结局：命运无法改变');
+			} else {
+				failBtn.dataset.target = 'fail.html';
+				failBtn.dataset.i18n = 'game.endingEarly';
+				failBtn.textContent = gameText('game.endingEarly', null, '查看结局：提早失利');
+			}
+		}
+		// to-do #15：记录同关连续失败次数
+		if (typeof recordLevelFail === 'function' && typeof CURRENT_LEVEL_ID !== 'undefined') {
+			recordLevelFail(CURRENT_LEVEL_ID);
+		}
+		let tip = loseTips[Math.floor(Math.random() * loseTips.length)]
+		if (CURRENT_LEVEL_ID === 7) tip = '……帝国第二次折戟于此，命运没有给历史第二次机会。';
+		document.getElementById('loseTips').style = '';
+		document.getElementById('loseTips').dataset.sourceText = tip;
+		document.getElementById('loseTips').textContent = gameContent(tip);
+		hideMidGameControls();
+		return ;
+	}
+
+	footerMode = 'turn';
+	renderFooterStatus();
+	/* 加载剩余回合数 */
+}
+
+buttonContainer.addEventListener('click', function() {
+	// 点击按钮时推进 24 '帧'
+	clearDisable();
 
 	// to-do #9：回合开始前按关卡策略给红方重设一次方向（一回合内不再变）
 	if (typeof applyEnemyAI === 'function') {
 		applyEnemyAI();
 	}
 
-	const movingCounts = 24; 
+	const movingCounts = 24;
 
-	for(let i = 0; i < movingCounts; ++ i) { 
+	for(let i = 0; i < movingCounts; ++ i) {
 
-		nextStep(); 
+		nextStep();
 
 		processTurnEscapes();
 
@@ -1809,188 +1271,188 @@ buttonContainer.addEventListener('click', function() {
 	// 开火特效（2026-09）：24 帧结算完后，给本回合开过火的单位统一生成烟雾 / 枪口火光
 	if (typeof fxFlush === 'function') fxFlush();
 
-	// 防止误触造成多次触发 
-	// 测试时会注释，发布时记得删去 
-	this.disabled = true; 
-	setTimeout(() => {this.disabled = false;}, 300); 
+	// 防止误触造成多次触发
+	// 测试时会注释，发布时记得删去
+	this.disabled = true;
+	setTimeout(() => {this.disabled = false;}, 300);
 
-	checkWinState(); 
+	checkWinState();
 
-	renderInfoPanel(); 
-	renderEnemyPanel(); 
-	updateRangePositions(); 
-	renderOrderArrows(); 
-}); 
- 
-/* ========== to-do #4：选中集合 + 画框多选 ========== */ 
-let selectedPieces = new Array();        // 当前选中的（蓝方）军队，元素为 armys 里的对象 
-const selectionListeners = new Array();  // #5 左侧显示条等可挂监听，选中变化时收到通知 
- 
-function getSelection() { return selectedPieces; } 
+	renderInfoPanel();
+	renderEnemyPanel();
+	updateRangePositions();
+	renderOrderArrows();
+});
 
-function addSelectionListener(fn) { 
-	selectionListeners.push(fn); 
-} 
+/* ========== to-do #4：选中集合 + 画框多选 ========== */
+let selectedPieces = new Array();        // 当前选中的（蓝方）军队，元素为 armys 里的对象
+const selectionListeners = new Array();  // #5 左侧显示条等可挂监听，选中变化时收到通知
 
-function fireSelectionChanged() { 
-	selectionListeners.forEach(fn => { 
-		try { 
-			fn(); 
-		} catch (e) { 
-			/* 忽略单个监听器的错误 */ 
-		} 
-	}); 
-} 
- 
-// 按当前选中集合刷新所有棋子的高亮 
-function refreshSelectedUI() { 
-	clearHoverMatches(); 
-	document.querySelectorAll('.chess.selected').forEach(el => el.classList.remove('selected')); 
-	selectedPieces.forEach(p => { 
-		const el = document.getElementById(p.id); 
-		if (el) el.classList.add('selected'); 
-	}); 
-	fireSelectionChanged(); 
-} 
- 
-function clearSelection() { 
-	selectedPieces = []; 
-	refreshSelectedUI(); 
-} 
+function getSelection() { return selectedPieces; }
 
-function selectOnly(pieceData) { 
-	selectedPieces = [pieceData]; 
-	refreshSelectedUI(); 
-} 
+function addSelectionListener(fn) {
+	selectionListeners.push(fn);
+}
 
-function toggleSelect(pieceData) { 
-	const i = selectedPieces.indexOf(pieceData); 
-	if (i >= 0) selectedPieces.splice(i, 1); 
-	else selectedPieces.push(pieceData); 
-	refreshSelectedUI(); 
-} 
+function fireSelectionChanged() {
+	selectionListeners.forEach(fn => {
+		try {
+			fn();
+		} catch (e) {
+			/* 忽略单个监听器的错误 */
+		}
+	});
+}
 
-function selectMany(list) { 
-	selectedPieces = list.slice(); 
-	refreshSelectedUI(); 
-} 
+// 按当前选中集合刷新所有棋子的高亮
+function refreshSelectedUI() {
+	clearHoverMatches();
+	document.querySelectorAll('.chess.selected').forEach(el => el.classList.remove('selected'));
+	selectedPieces.forEach(p => {
+		const el = document.getElementById(p.id);
+		if (el) el.classList.add('selected');
+	});
+	fireSelectionChanged();
+}
 
-function removeFromSelection(pieceData) { 
-	const i = selectedPieces.indexOf(pieceData); 
-	if (i >= 0) selectedPieces.splice(i, 1); 
-	refreshSelectedUI(); 
-} 
- 
-function isAliveBlue(pieceData) { 
-	return !!pieceData && pieceData.color === 'blue' && !pieceData.disabled; 
-} 
- 
-// 给当前所有选中军队下令移动到 (targetX, targetY)（格坐标）。 
-// 下令后清空选中：避免残留选中导致再次渲染预览箭头（常驻蓝色箭头仍保留，它与选中无关） 
-function issueMoveTo(targetX, targetY) { 
-	selectedPieces.forEach(p => { 
-		p.targetx = targetX; 
-		p.targety = targetY; 
-	}); 
+function clearSelection() {
+	selectedPieces = [];
+	refreshSelectedUI();
+}
 
-	hideArrow(); 
-	clearOrderPreview(); 
-	clearSelection(); 
-	renderOrderArrows();   // to-do #11：常驻指示箭头随之更新 
-} 
- 
-/* ---------- 鼠标交互：单击选棋 / 点空地移动 / 拖拽画框多选 ---------- */ 
-let dragBoxState = null;   // { x0, y0, pieceEl, moved } 
- 
-function getBoxEl() { 
-	let el = document.getElementById('boxSel'); 
-	if (!el) { 
-		el = document.createElement('div'); 
-		el.id = 'boxSel'; 
-		boardContainer.appendChild(el); 
-	} 
-	return el; 
-} 
+function selectOnly(pieceData) {
+	selectedPieces = [pieceData];
+	refreshSelectedUI();
+}
 
-function hideBox() { 
-	const el = document.getElementById('boxSel'); 
-	if (el) el.style.display = 'none'; 
-} 
+function toggleSelect(pieceData) {
+	const i = selectedPieces.indexOf(pieceData);
+	if (i >= 0) selectedPieces.splice(i, 1);
+	else selectedPieces.push(pieceData);
+	refreshSelectedUI();
+}
 
-function updateBox(x1, y1) { 
-	const rect = boardContentRect(); 
-	const el = getBoxEl(); 
-	const left = Math.min(dragBoxState.x0, x1) - rect.left; 
-	const top = Math.min(dragBoxState.y0, y1) - rect.top; 
-	const right = Math.max(dragBoxState.x0, x1) - rect.left; 
-	const bottom = Math.max(dragBoxState.y0, y1) - rect.top; 
-	el.style.left = left + 'px'; 
-	el.style.top = top + 'px'; 
-	el.style.width = (right - left) + 'px'; 
-	el.style.height = (bottom - top) + 'px'; 
-	el.style.display = 'block'; 
-} 
- 
-boardContainer.addEventListener('mousedown', function (e) { 
-	if (e.button !== 0 || dragBoxState) return; 
-	dragBoxState = { 
-		x0: e.clientX, 
-		y0: e.clientY, 
-		pieceEl: e.target.closest('.chess') || null, 
-		moved: false 
-	}; 
-	hideArrow(); 
-}); 
- 
-boardContainer.addEventListener('mousemove', function (e) { 
-	if (dragBoxState) { 
-		const dx = e.clientX - dragBoxState.x0, dy = e.clientY - dragBoxState.y0; 
+function selectMany(list) {
+	selectedPieces = list.slice();
+	refreshSelectedUI();
+}
+
+function removeFromSelection(pieceData) {
+	const i = selectedPieces.indexOf(pieceData);
+	if (i >= 0) selectedPieces.splice(i, 1);
+	refreshSelectedUI();
+}
+
+function isAliveBlue(pieceData) {
+	return !!pieceData && pieceData.color === 'blue' && !pieceData.disabled;
+}
+
+// 给当前所有选中军队下令移动到 (targetX, targetY)（格坐标）。
+// 下令后清空选中：避免残留选中导致再次渲染预览箭头（常驻蓝色箭头仍保留，它与选中无关）
+function issueMoveTo(targetX, targetY) {
+	selectedPieces.forEach(p => {
+		p.targetx = targetX;
+		p.targety = targetY;
+	});
+
+	hideArrow();
+	clearOrderPreview();
+	clearSelection();
+	renderOrderArrows();   // to-do #11：常驻指示箭头随之更新
+}
+
+/* ---------- 鼠标交互：单击选棋 / 点空地移动 / 拖拽画框多选 ---------- */
+let dragBoxState = null;   // { x0, y0, pieceEl, moved }
+
+function getBoxEl() {
+	let el = document.getElementById('boxSel');
+	if (!el) {
+		el = document.createElement('div');
+		el.id = 'boxSel';
+		boardContainer.appendChild(el);
+	}
+	return el;
+}
+
+function hideBox() {
+	const el = document.getElementById('boxSel');
+	if (el) el.style.display = 'none';
+}
+
+function updateBox(x1, y1) {
+	const rect = boardContentRect();
+	const el = getBoxEl();
+	const left = Math.min(dragBoxState.x0, x1) - rect.left;
+	const top = Math.min(dragBoxState.y0, y1) - rect.top;
+	const right = Math.max(dragBoxState.x0, x1) - rect.left;
+	const bottom = Math.max(dragBoxState.y0, y1) - rect.top;
+	el.style.left = left + 'px';
+	el.style.top = top + 'px';
+	el.style.width = (right - left) + 'px';
+	el.style.height = (bottom - top) + 'px';
+	el.style.display = 'block';
+}
+
+boardContainer.addEventListener('mousedown', function (e) {
+	if (e.button !== 0 || dragBoxState) return;
+	dragBoxState = {
+		x0: e.clientX,
+		y0: e.clientY,
+		pieceEl: e.target.closest('.chess') || null,
+		moved: false
+	};
+	hideArrow();
+});
+
+boardContainer.addEventListener('mousemove', function (e) {
+	if (dragBoxState) {
+		const dx = e.clientX - dragBoxState.x0, dy = e.clientY - dragBoxState.y0;
 		if (!dragBoxState.moved && dx * dx + dy * dy > 25) {
 			dragBoxState.moved = true;
-		} 
-
-		if (dragBoxState.moved) {
-			updateBox(e.clientX, e.clientY); 
 		}
 
-		return; 
-	} 
+		if (dragBoxState.moved) {
+			updateBox(e.clientX, e.clientY);
+		}
 
-	// 非拖拽：给"当前所有已选蓝方"画预览箭头（敌人查看模式不预览） 
-	if (viewMode === 'enemy') { 
-		clearOrderPreview(); 
-		return; 
-	} 
+		return;
+	}
 
-	renderOrderPreview(e); 
-}); 
- 
-boardContainer.addEventListener('mouseup', function (e) { 
-	if (!dragBoxState) return; 
+	// 非拖拽：给"当前所有已选蓝方"画预览箭头（敌人查看模式不预览）
+	if (viewMode === 'enemy') {
+		clearOrderPreview();
+		return;
+	}
 
-	const st = dragBoxState; 
-	dragBoxState = null; 
+	renderOrderPreview(e);
+});
 
-	clearOrderPreview();   // 一旦点击/松手，预览箭头消失 
- 
-	if (st.moved) { 
-		// 画框多选：指挥模式=存活蓝方；查看敌人模式=存活红方 
-		hideBox(); 
+boardContainer.addEventListener('mouseup', function (e) {
+	if (!dragBoxState) return;
 
-		const left = Math.min(st.x0, e.clientX), right = Math.max(st.x0, e.clientX); 
-		const top = Math.min(st.y0, e.clientY), bottom = Math.max(st.y0, e.clientY); 
+	const st = dragBoxState;
+	dragBoxState = null;
 
-		const inBox = armys.filter(p => { 
-			if (viewMode === 'enemy' ? !isAliveRed(p) : !isAliveBlue(p)) return false; 
+	clearOrderPreview();   // 一旦点击/松手，预览箭头消失
 
-			const el = document.getElementById(p.id); 
-			if (!el) return false; 
+	if (st.moved) {
+		// 画框多选：指挥模式=存活蓝方；查看敌人模式=存活红方
+		hideBox();
 
-			const r = el.getBoundingClientRect(); 
-			const cx = r.left + r.width / 2, cy = r.top + r.height / 2; 
+		const left = Math.min(st.x0, e.clientX), right = Math.max(st.x0, e.clientX);
+		const top = Math.min(st.y0, e.clientY), bottom = Math.max(st.y0, e.clientY);
 
-			return cx >= left && cx <= right && cy >= top && cy <= bottom; 
-		}); 
+		const inBox = armys.filter(p => {
+			if (viewMode === 'enemy' ? !isAliveRed(p) : !isAliveBlue(p)) return false;
+
+			const el = document.getElementById(p.id);
+			if (!el) return false;
+
+			const r = el.getBoundingClientRect();
+			const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+
+			return cx >= left && cx <= right && cy >= top && cy <= bottom;
+		});
 
 		if (viewMode === 'enemy') {
 			selectEnemyMany(inBox);
@@ -1998,70 +1460,70 @@ boardContainer.addEventListener('mouseup', function (e) {
 			selectMany(inBox);
 		}
 
-		return; 
-	} 
- 
-	// 单击语义 
-	if (st.pieceEl) { 
+		return;
+	}
+
+	// 单击语义
+	if (st.pieceEl) {
 
 		const pieceData =
-			armys.find(p => p.id === st.pieceEl.id); 
+			armys.find(p => p.id === st.pieceEl.id);
 
-		if (viewMode === 'enemy') { 
+		if (viewMode === 'enemy') {
 
-			// 查看敌人模式：单击/加减选红方；点蓝方或空地 = 清空敌方选中 
-			if (isAliveRed(pieceData)) { 
+			// 查看敌人模式：单击/加减选红方；点蓝方或空地 = 清空敌方选中
+			if (isAliveRed(pieceData)) {
 
 				if (e.ctrlKey || e.shiftKey) {
-					toggleEnemy(pieceData); 
+					toggleEnemy(pieceData);
 				}
 				else {
-					selectEnemyOnly(pieceData); 
+					selectEnemyOnly(pieceData);
 				}
 
-			} else { 
+			} else {
 
-				clearEnemies(); 
+				clearEnemies();
 			}
 
-			return; 
-		} 
+			return;
+		}
 
-		if (isAliveBlue(pieceData)) { 
+		if (isAliveBlue(pieceData)) {
 
-			if (e.ctrlKey || e.shiftKey) { 
+			if (e.ctrlKey || e.shiftKey) {
 
-				toggleSelect(pieceData);          // Ctrl/Shift + 单击：加减选中 
-				return; 
+				toggleSelect(pieceData);          // Ctrl/Shift + 单击：加减选中
+				return;
 
-			} 
+			}
 
-			if (selectedPieces.length === 0) { 
+			if (selectedPieces.length === 0) {
 
-				selectOnly(pieceData);            // 没有任何选中时，单击=选中它 
-				return; 
+				selectOnly(pieceData);            // 没有任何选中时，单击=选中它
+				return;
 
-			} 
+			}
 
-			if (selectedPieces.length === 1) { 
+			if (selectedPieces.length === 1) {
 
-				// 已有单个选中：点自己=原地待命；点其它单位=让它移动到该单位的位置（原逻辑） 
-				issueMoveTo(pieceData.posx, pieceData.posy); 
-				return; 
+				// 已有单个选中：点自己=原地待命；点其它单位=让它移动到该单位的位置（原逻辑）
+				issueMoveTo(pieceData.posx, pieceData.posy);
+				return;
 
-			} 
+			}
 
-			selectOnly(pieceData);                // 多选状态下点某蓝兵：切换为只选它 
-			return; 
-		} 
+			selectOnly(pieceData);                // 多选状态下点某蓝兵：切换为只选它
+			return;
+		}
 
-		// 点到红方/死亡单位：指挥模式下当作在该格下令 
-	} 
+		// 点到红方/死亡单位：指挥模式下当作在该格下令
+	}
 
-	// 点空白处：给当前所有选中军队下令移动（仅指挥模式） 
-	if (viewMode === 'enemy' || selectedPieces.length === 0) return; 
+	// 点空白处：给当前所有选中军队下令移动（仅指挥模式）
+	if (viewMode === 'enemy' || selectedPieces.length === 0) return;
 
-	const rect = boardContentRect(); 
+	const rect = boardContentRect();
 
 	const targetX =
 		Math.max(
@@ -2070,7 +1532,7 @@ boardContainer.addEventListener('mouseup', function (e) {
 				e.clientX - rect.left,
 				boardContainer.clientWidth
 			)
-		); 
+		);
 
 	const targetY =
 		Math.max(
@@ -2079,50 +1541,49 @@ boardContainer.addEventListener('mouseup', function (e) {
 				e.clientY - rect.top,
 				boardContainer.clientHeight
 			)
-		); 
+		);
 
 	issueMoveTo(
 		getPosByCell(targetX),
 		getPosByCell(targetY)
-	); 
-}); 
- 
-boardContainer.addEventListener('mouseleave', function () { 
-	if (dragBoxState) { 
-		dragBoxState = null; 
-		hideBox(); 
-	} 
+	);
+});
 
-	if (isArrowVisible) hideArrow(); 
+boardContainer.addEventListener('mouseleave', function () {
+	if (dragBoxState) {
+		dragBoxState = null;
+		hideBox();
+	}
 
-	clearOrderPreview(); 
-}); 
- 
-document.getElementById('button-replay').addEventListener('click', () => { 
-	// 加载 Replay 按钮 
-	window.location.reload(); 
-}) 
- 
-/* to-do #13/#14：失败后跳转对应结局页（game7 失败 -> destiny-fail.html，其余 -> fail.html） */ 
-const _failGo = document.getElementById('button-fail'); 
+	if (isArrowVisible) hideArrow();
+
+	clearOrderPreview();
+});
+
+document.getElementById('button-replay').addEventListener('click', () => {
+	// 加载 Replay 按钮
+	window.location.reload();
+})
+
+/* to-do #13/#14：失败后跳转对应结局页（game7 失败 -> destiny-fail.html，其余 -> fail.html） */
+const _failGo = document.getElementById('button-fail');
 
 if (_failGo) {
-	_failGo.addEventListener('click', function () { 
+	_failGo.addEventListener('click', function () {
 		window.location.href =
-			_failGo.dataset.target || 'fail.html'; 
-	}); 
-} 
- 
-/* to-do #3：关卡内 Save/Load（目标可选 a.save 或 存档1/2/3）+ 返回主界面 */ 
-function selectedTarget() { 
-	const sel = document.getElementById('slot-select'); 
-	if (sel && isFileId(sel.value)) return String(sel.value); 
-	return AUTO_ID; 
-} 
- 
+			_failGo.dataset.target || 'fail.html';
+	});
+}
+
+/* to-do #3：关卡内 Save/Load（目标可选 a.save 或 存档1/2/3）+ 返回主界面 */
+function selectedTarget() {
+	const sel = document.getElementById('slot-select');
+	if (sel && isFileId(sel.value)) return String(sel.value);
+	return AUTO_ID;
+}
+
 document.getElementById('button-save').addEventListener('click', function () {
 	const user = currentUserSafe();
-	if (!user) { gameNotice(gameText('game.loginToSave', null, '未登录：请先回主界面登录，再来保存')); return; }
 	if (!user) {
 		if (typeof toast === 'function') toast('未登录：请先回主界面登录，再来保存');
 		return;
@@ -2132,10 +1593,6 @@ document.getElementById('button-save').addEventListener('click', function () {
 	const snap = captureSnapshot();
 	if (!snap) return;
 	const cur = (id === AUTO_ID) ? getAuto(user) : getManual(user, id);
-	if (cur && cur.snapshot && !confirm(gameText('game.overwriteConfirm', { file: fileName(id), level: cur.snapshot.level }, '覆盖 ' + fileName(id) + ' 里的中途存档（第 ' + cur.snapshot.level + ' 关）？'))) return;
-	const ok = (id === AUTO_ID) ? saveSnapshotToAuto(user, snap) : saveToManual(user, id, snap);
-	if (ok) { gameNotice(gameText('game.savedTo', { file: fileName(id) }, '已保存到 ' + fileName(id))); refreshSlotSelect(); }
-});
 
 	function doSave() {
 		const ok = (id === AUTO_ID) ? saveSnapshotToAuto(user, snap) : saveToManual(user, id, snap);
@@ -2151,31 +1608,10 @@ document.getElementById('button-save').addEventListener('click', function () {
 		if (!confirm(ask)) return;
 	}
 	doSave();
-}); 
- 
+});
+
 document.getElementById('button-load').addEventListener('click', function () {
 	const user = currentUserSafe();
-	if (!user) { gameNotice(gameText('game.notLoggedIn', null, '未登录')); return; }
-	const id = selectedTarget();
-	let snap;
-	if (id === AUTO_ID) {
-		snap = autoSnapshot(user);
-		if (!snap) { gameNotice(gameText('game.noSnapshot', { file: fileName(id) }, fileName(id) + ' 里没有中途存档')); return; }
-	} else {
-		const f = getManual(user, id);
-		if (!f || !f.snapshot) { gameNotice(gameText('game.noSnapshot', { file: fileName(id) }, fileName(id) + ' 里没有中途存档')); return; }
-		snap = f.snapshot;
-	}
-	// 关卡匹配校验：本关只能读"属于本关"的存档，避免把别的关读进本关
-	if (Number(snap.level) !== CURRENT_LEVEL_ID) {
-		gameNotice(gameText('game.otherLevelSave', { saved: snap.level, current: CURRENT_LEVEL_ID }, '该存档属于第 ' + snap.level + ' 关，当前在第 ' + CURRENT_LEVEL_ID + ' 关，不能在这里读取。'));
-		return;
-	}
-	// Load 语义：手动档先覆盖 a.save，再按它的快照继续
-	if (id !== AUTO_ID) loadManualToAuto(user, id);
-	if (!confirm(gameText('game.readConfirm', { file: fileName(id), level: snap.level, turns: snap.remain_turns }, '读取 ' + fileName(id) + ' 会覆盖当前未保存进度，继续？'))) return;
-	loadSnapshot(snap);
-});
 	if (!user) {
 		if (typeof toast === 'function') toast('未登录');
 		return;
@@ -2211,135 +1647,98 @@ document.getElementById('button-load').addEventListener('click', function () {
 	if (typeof modalConfirm === 'function') { modalConfirm(ask, doLoad); return; }
 	if (!confirm(ask)) return;
 	doLoad();
-}); 
- 
-document.getElementById('button-exit').addEventListener('click', function () { 
-	window.location.href = 'menu.html'; 
-}); 
- 
+});
+
+document.getElementById('button-exit').addEventListener('click', function () {
+	window.location.href = 'menu.html';
+});
+
 /* 结算页的 Next 跳转
  *   · 目标在进入结算页时由 checkWinState() 算好并写在 #button-next-game 的 data-target 上：
  *       第 7 关通关 → hidden-end.html；下一关是结局页（第 6 关 → end-game.html）→ 直接进结局；
  *       下一关是关卡（第 1~5 关）→ menu.html?unlock=<刚通关的关号>，主界面地图会播"路线解锁"动画，
  *       再由玩家点地图上的下一个标记进入（不再直接跳进下一关）。
  *   · "下一关是不是结局"仍以 levels.js 的 nextLevelFile() 为准，不在这里写死。 */
-document.getElementById('button-next-game').addEventListener('click', function () { 
-	window.location.href = this.dataset.target || 'menu.html'; 
-}); 
- 
-async function showRedEffect(){ 
+document.getElementById('button-next-game').addEventListener('click', function () {
+	window.location.href = this.dataset.target || 'menu.html';
+});
 
-	armys.forEach(element => { 
+async function showRedEffect(){
 
-		if(element.color == 'red') { 
+	armys.forEach(element => {
+
+		if(element.color == 'red') {
 
 			document.getElementById(element.id)
-				.classList.add('highlighted'); 
+				.classList.add('highlighted');
 		}
-	}); 
+	});
 
-	setTimeout(() => { 
+	setTimeout(() => {
 
-		armys.forEach(element => { 
+		armys.forEach(element => {
 
-			if(element.color == 'red') { 
+			if(element.color == 'red') {
 
 				document.getElementById(element.id)
-					.classList.remove('highlighted'); 
+					.classList.remove('highlighted');
 			}
-		}); 
+		});
 
-		setTimeout(() => { 
+		setTimeout(() => {
 
-			armys.forEach(element => { 
+			armys.forEach(element => {
 
-				if(element.color == 'red') { 
+				if(element.color == 'red') {
 
 					document.getElementById(element.id)
-						.classList.add('highlighted'); 
+						.classList.add('highlighted');
 				}
-			}); 
+			});
 
-			setTimeout(() => { 
+			setTimeout(() => {
 
-				armys.forEach(element => { 
+				armys.forEach(element => {
 
-					if(element.color == 'red') { 
+					if(element.color == 'red') {
 
 						document.getElementById(element.id)
-							.classList.remove('highlighted'); 
+							.classList.remove('highlighted');
 					}
-				}); 
+				});
 
-			}, 1000); 
+			}, 1000);
+
+		}, 1000);
+
+	}, 1000);
+}
+
+window.addEventListener('load', showRedEffect);
 
 /* ========== to-do #5：左侧显示条 ========== */
-const UNIT_NAME_MAP = { '步': '步兵', '炮': '炮兵', '骑': '骑兵', '散': '散兵', '掷': '掷弹兵' };   // 出现新兵种时在这里补显示名
-const UNIT_NAME_KEYS = { '步': 'unit.infantry', '炮': 'unit.artillery', '骑': 'unit.cavalry', '散': 'unit.skirmisher', '掷': 'unit.grenadier' };
 
-function unitDisplayName(p) {
-	const fallback = UNIT_NAME_MAP[p.cls] || p.cls || p.img || '?';
-	const key = UNIT_NAME_KEYS[p.cls];
-	return key ? gameText(key, null, fallback) : gameContent(fallback);
-}
-		}, 1000); 
-
-	}, 1000); 
-} 
- 
-window.addEventListener('load', showRedEffect); 
- 
-/* ========== to-do #5：左侧显示条 ========== */ 
-
-// 渲染左侧显示条：当前选中的（存活）蓝方军队及其属性 + LP 进度条
-function renderInfoPanel() {
-	const bar = document.getElementById('info-bar');
-	if (!bar) return;
-	const list = selectedPieces.filter(isAliveBlue);
-	bar.innerHTML = '';
-	if (list.length === 0) { bar.style.display = 'none'; return; }
-	bar.style.display = 'block';
-	const head = document.createElement('div');
-	head.className = 'info-head';
-	head.textContent = gameText('game.selected', { count: list.length }, '选中部队（' + list.length + '）');
-	bar.appendChild(head);
-	list.forEach(p => {
-		const row = document.createElement('div');
-		row.className = 'info-row';
-		const name = unitDisplayName(p);
-		const ratio = lpRatioOf(p);
-		const color = ratio > 0.5 ? '#4a7c34' : ratio > 0.25 ? '#c99b2e' : '#c0392b';
-
-		const titleLine = document.createElement('div');
-		titleLine.className = 'info-titleline';
-		const nameSpan = document.createElement('span');
-		nameSpan.className = 'info-title';
-		nameSpan.textContent = name;
-		const rm = document.createElement('button');
-		rm.className = 'info-remove';
-		rm.textContent = '✕';
-		rm.title = gameText('game.removeAlly', null, '取消选中（移出显示条）');
-		rm.addEventListener('click', function () { removeFromSelection(p); });
-		row.dataset.pieceId = p.id;
-		titleLine.appendChild(nameSpan);
-		titleLine.appendChild(rm);
-		row.appendChild(titleLine);
-
-		const stats = document.createElement('div');
-		stats.className = 'info-stats';
-		stats.textContent = gameText('game.stats', { range: p.atkrange, attack: p.atk, speed: p.speed }, '射程 ' + p.atkrange + ' · 攻击 ' + p.atk + ' · 速度 ' + p.speed);
-		row.appendChild(stats);
 const UNIT_NAME_MAP = {
 	'步': '步兵',
 	'炮': '炮兵',
 	'骑': '骑兵',
 	'散': '散兵',
 	'掷': '掷弹兵'
-};   
+};
+const UNIT_NAME_KEYS = {
+	'步': 'unit.infantry', '炮': 'unit.artillery', '骑': 'unit.cavalry',
+	'散': 'unit.skirmisher', '掷': 'unit.grenadier'
+};
 
-function lpRatioOf(p) { 
+function unitDisplayName(p) {
+	const fallback = UNIT_NAME_MAP[p.cls] || p.cls || p.img || '?';
+	const key = UNIT_NAME_KEYS[p.cls];
+	return key ? gameText(key, null, fallback) : gameContent(fallback);
+}
 
-	const max = p.lpMax || p.lp || 1; 
+function lpRatioOf(p) {
+
+	const max = p.lpMax || p.lp || 1;
 
 	return Math.max(
 		0,
@@ -2347,479 +1746,409 @@ function lpRatioOf(p) {
 			1,
 			(p.lp || 0) / max
 		)
-	); 
-} 
- 
-// 渲染左侧显示条：当前选中的（存活）蓝方军队及其属性 + LP 进度条 
-function renderInfoPanel() { 
+	);
+}
 
-	const bar = document.getElementById('info-bar'); 
+// 渲染左侧显示条：当前选中的（存活）蓝方军队及其属性 + LP 进度条
+function renderInfoPanel() {
 
-	if (!bar) return; 
+	const bar = document.getElementById('info-bar');
+
+	if (!bar) return;
 
 	const list =
-		selectedPieces.filter(isAliveBlue); 
+		selectedPieces.filter(isAliveBlue);
 
-	bar.innerHTML = ''; 
-
-// 右侧面板：被选中红方单位的剩余血量（LP 进度条）
-function renderEnemyPanel() {
-	const bar = document.getElementById('enemy-info');
-	if (!bar) return;
-	const list = selectedEnemies.filter(isAliveRed);
 	bar.innerHTML = '';
-	if (list.length === 0) { bar.style.display = 'none'; return; }
+
+	if (list.length === 0) {
+		bar.style.display = 'none';
+		return;
+	}
+
 	bar.style.display = 'block';
+
 	const head = document.createElement('div');
 	head.className = 'info-head';
-	head.textContent = gameText('game.enemies', { count: list.length }, '敌方部队（' + list.length + '）');
+	head.textContent = gameText('game.selected', { count: list.length }, '选中部队（' + list.length + '）');
+
 	bar.appendChild(head);
+
 	list.forEach(p => {
+
 		const row = document.createElement('div');
 		row.className = 'info-row';
+
 		const name = unitDisplayName(p);
+
 		const ratio = lpRatioOf(p);
-		const color = ratio > 0.5 ? '#4a7c34' : ratio > 0.25 ? '#c99b2e' : '#c0392b';
-
-		const titleLine = document.createElement('div');
-		titleLine.className = 'info-titleline';
-		const nameSpan = document.createElement('span');
-		nameSpan.className = 'info-title';
-		nameSpan.textContent = name;
-		const rm = document.createElement('button');
-		rm.className = 'info-remove';
-		rm.textContent = '✕';
-		rm.title = gameText('game.removeEnemy', null, '移出敌方查看');
-		rm.addEventListener('click', function () { removeFromEnemies(p); });
-		row.dataset.pieceId = p.id;
-		titleLine.appendChild(nameSpan);
-		titleLine.appendChild(rm);
-		row.appendChild(titleLine);
-	if (list.length === 0) { 
-		bar.style.display = 'none'; 
-		return; 
-	} 
-
-	bar.style.display = 'block'; 
-
-	const head = document.createElement('div'); 
-	head.className = 'info-head'; 
-	head.textContent =
-		'选中部队（' +
-		list.length +
-		'）'; 
-
-	bar.appendChild(head); 
-
-	list.forEach(p => { 
-
-// 切换"指挥 / 查看敌人"模式
-function setViewMode(m) {
-	viewMode = (m === 'enemy') ? 'enemy' : 'ally';
-	const btn = document.getElementById('button-mode');
-	if (btn) btn.textContent = (viewMode === 'enemy')
-		? gameText('game.backCommand', null, '返回指挥')
-		: gameText('game.viewEnemy', null, '查看敌人');
-	if (viewMode === 'enemy') clearSelection(); else clearEnemies();
-	hideArrow();
-}
-document.getElementById('button-mode').addEventListener('click', function () {
-	setViewMode(viewMode === 'enemy' ? 'ally' : 'enemy');
-});
-renderEnemyPanel();
-		const row = document.createElement('div'); 
-		row.className = 'info-row'; 
-
-		const name =
-			UNIT_NAME_MAP[p.cls] ||
-			p.cls ||
-			p.img ||
-			'?'; 
-
-		const ratio = lpRatioOf(p); 
 
 		const color =
 			ratio > 0.5
 				? '#4a7c34'
 				: ratio > 0.25
 					? '#c99b2e'
-					: '#c0392b'; 
+					: '#c0392b';
 
 		const titleLine =
-			document.createElement('div'); 
+			document.createElement('div');
 
 		titleLine.className =
-			'info-titleline'; 
+			'info-titleline';
 
 		const nameSpan =
-			document.createElement('span'); 
+			document.createElement('span');
 
 		nameSpan.className =
-			'info-title'; 
+			'info-title';
 
 		nameSpan.textContent =
-			name; 
+			name;
 
 		const rm =
-			document.createElement('button'); 
+			document.createElement('button');
 
 		rm.className =
-			'info-remove'; 
+			'info-remove';
 
-		rm.textContent = '✕'; 
+		rm.textContent = '✕';
 
-		rm.title =
-			'取消选中（移出显示条）'; 
+		rm.title = gameText('game.removeAlly', null, '取消选中（移出显示条）');
 
 		rm.addEventListener(
 			'click',
 			function () {
 				removeFromSelection(p);
 			}
-		); 
+		);
 
-		row.dataset.pieceId = p.id; 
+		row.dataset.pieceId = p.id;
 
-		titleLine.appendChild(nameSpan); 
-		titleLine.appendChild(rm); 
-		row.appendChild(titleLine); 
+		titleLine.appendChild(nameSpan);
+		titleLine.appendChild(rm);
+		row.appendChild(titleLine);
 
 		const stats =
-			document.createElement('div'); 
+			document.createElement('div');
 
 		stats.className =
-			'info-stats'; 
+			'info-stats';
 
-		stats.textContent =
-			'射程 ' +
-			p.atkrange +
-			' · 攻击 ' +
-			p.atk +
-			' · 速度 ' +
-			p.speed; 
+		stats.textContent = gameText('game.stats', { range: p.atkrange, attack: p.atk, speed: p.speed }, '射程 ' + p.atkrange + ' · 攻击 ' + p.atk + ' · 速度 ' + p.speed);
 
-		row.appendChild(stats); 
+		row.appendChild(stats);
 
 		const lpbar =
-			document.createElement('div'); 
+			document.createElement('div');
 
 		lpbar.className =
-			'info-lpbar'; 
+			'info-lpbar';
 
 		const fill =
-			document.createElement('div'); 
+			document.createElement('div');
 
 		fill.className =
-			'info-lpfill'; 
+			'info-lpfill';
 
 		fill.style.width =
 			(ratio * 100).toFixed(1) +
-			'%'; 
+			'%';
 
 		fill.style.background =
-			color; 
+			color;
 
-		lpbar.appendChild(fill); 
-		row.appendChild(lpbar); 
+		lpbar.appendChild(fill);
+		row.appendChild(lpbar);
 
 		const lptext =
-			document.createElement('div'); 
+			document.createElement('div');
 
 		lptext.className =
-			'info-lptext'; 
+			'info-lptext';
 
 		lptext.textContent =
 			'LP ' +
 			Math.max(0, Math.round(p.lp)) +
 			' / ' +
-			(p.lpMax || p.lp); 
+			(p.lpMax || p.lp);
 
-		row.appendChild(lptext); 
+		row.appendChild(lptext);
 
-		bar.appendChild(row); 
-	}); 
-} 
+		bar.appendChild(row);
+	});
+}
 
-addSelectionListener(renderInfoPanel); 
-renderInfoPanel(); 
- 
-/* ========== 查看敌人模式（to-do #4/#5 扩展） ========== */ 
+addSelectionListener(renderInfoPanel);
+renderInfoPanel();
 
-let viewMode = 'ally';                       
-let selectedEnemies = new Array();           
-const enemySelectionListeners = new Array(); 
- 
-function isAliveRed(p) { 
+/* ========== 查看敌人模式（to-do #4/#5 扩展） ========== */
+
+let viewMode = 'ally';
+let selectedEnemies = new Array();
+const enemySelectionListeners = new Array();
+
+function isAliveRed(p) {
 	return !!p &&
 		p.color === 'red' &&
-		!p.disabled; 
-} 
+		!p.disabled;
+}
 
-function getEnemySelection() { 
-	return selectedEnemies; 
-} 
+function getEnemySelection() {
+	return selectedEnemies;
+}
 
-function addEnemySelectionListener(fn) { 
-	enemySelectionListeners.push(fn); 
-} 
+function addEnemySelectionListener(fn) {
+	enemySelectionListeners.push(fn);
+}
 
-function fireEnemySelectionChanged() { 
+function fireEnemySelectionChanged() {
 
-	enemySelectionListeners.forEach(fn => { 
+	enemySelectionListeners.forEach(fn => {
 
-		try { 
-			fn(); 
-		} catch (e) { 
-			/* 忽略单个监听器的错误 */ 
-		} 
+		try {
+			fn();
+		} catch (e) {
+			/* 忽略单个监听器的错误 */
+		}
 
-	}); 
-} 
+	});
+}
 
-function refreshEnemySelectionUI() { 
+function refreshEnemySelectionUI() {
 
-	clearHoverMatches(); 
+	clearHoverMatches();
 
 	document
 		.querySelectorAll('.chess.sel-enemy')
 		.forEach(el =>
 			el.classList.remove('sel-enemy')
-		); 
+		);
 
-	selectedEnemies.forEach(p => { 
+	selectedEnemies.forEach(p => {
 
 		const el =
-			document.getElementById(p.id); 
+			document.getElementById(p.id);
 
 		if (el) {
-			el.classList.add('sel-enemy'); 
+			el.classList.add('sel-enemy');
 		}
-	}); 
+	});
 
-	fireEnemySelectionChanged(); 
-} 
+	fireEnemySelectionChanged();
+}
 
-function clearEnemies() { 
-	selectedEnemies = []; 
-	refreshEnemySelectionUI(); 
-} 
+function clearEnemies() {
+	selectedEnemies = [];
+	refreshEnemySelectionUI();
+}
 
-function selectEnemyOnly(p) { 
-	selectedEnemies = [p]; 
-	refreshEnemySelectionUI(); 
-} 
+function selectEnemyOnly(p) {
+	selectedEnemies = [p];
+	refreshEnemySelectionUI();
+}
 
-function toggleEnemy(p) { 
+function toggleEnemy(p) {
 
 	const i =
-		selectedEnemies.indexOf(p); 
+		selectedEnemies.indexOf(p);
 
 	if (i >= 0) {
-		selectedEnemies.splice(i, 1); 
+		selectedEnemies.splice(i, 1);
 	} else {
-		selectedEnemies.push(p); 
-	} 
+		selectedEnemies.push(p);
+	}
 
-	refreshEnemySelectionUI(); 
-} 
+	refreshEnemySelectionUI();
+}
 
-function selectEnemyMany(list) { 
-	selectedEnemies = list.slice(); 
-	refreshEnemySelectionUI(); 
-} 
+function selectEnemyMany(list) {
+	selectedEnemies = list.slice();
+	refreshEnemySelectionUI();
+}
 
-function removeFromEnemies(pieceData) { 
+function removeFromEnemies(pieceData) {
 
 	const i =
-		selectedEnemies.indexOf(pieceData); 
+		selectedEnemies.indexOf(pieceData);
 
 	if (i >= 0) {
-		selectedEnemies.splice(i, 1); 
-		refreshEnemySelectionUI(); 
+		selectedEnemies.splice(i, 1);
+		refreshEnemySelectionUI();
 	}
-} 
- 
-// 右侧面板：被选中红方单位的剩余血量（LP 进度条） 
-function renderEnemyPanel() { 
+}
+
+// 右侧面板：被选中红方单位的剩余血量（LP 进度条）
+function renderEnemyPanel() {
 
 	const bar =
-		document.getElementById('enemy-info'); 
+		document.getElementById('enemy-info');
 
-	if (!bar) return; 
+	if (!bar) return;
 
 	const list =
-		selectedEnemies.filter(isAliveRed); 
+		selectedEnemies.filter(isAliveRed);
 
-	bar.innerHTML = ''; 
+	bar.innerHTML = '';
 
-	if (list.length === 0) { 
-		bar.style.display = 'none'; 
-		return; 
-	} 
+	if (list.length === 0) {
+		bar.style.display = 'none';
+		return;
+	}
 
-	bar.style.display = 'block'; 
+	bar.style.display = 'block';
 
 	const head =
-		document.createElement('div'); 
+		document.createElement('div');
 
 	head.className =
-		'info-head'; 
+		'info-head';
 
-	head.textContent =
-		'敌方部队（' +
-		list.length +
-		'）'; 
+	head.textContent = gameText('game.enemies', { count: list.length }, '敌方部队（' + list.length + '）');
 
-	bar.appendChild(head); 
+	bar.appendChild(head);
 
-	list.forEach(p => { 
+	list.forEach(p => {
 
 		const row =
-			document.createElement('div'); 
+			document.createElement('div');
 
 		row.className =
-			'info-row'; 
+			'info-row';
 
-		const name =
-			UNIT_NAME_MAP[p.cls] ||
-			p.cls ||
-			p.img ||
-			'?'; 
+		const name = unitDisplayName(p);
 
 		const ratio =
-			lpRatioOf(p); 
+			lpRatioOf(p);
 
 		const color =
 			ratio > 0.5
 				? '#4a7c34'
 				: ratio > 0.25
 					? '#c99b2e'
-					: '#c0392b'; 
+					: '#c0392b';
 
 		const titleLine =
-			document.createElement('div'); 
+			document.createElement('div');
 
 		titleLine.className =
-			'info-titleline'; 
+			'info-titleline';
 
 		const nameSpan =
-			document.createElement('span'); 
+			document.createElement('span');
 
 		nameSpan.className =
-			'info-title'; 
+			'info-title';
 
 		nameSpan.textContent =
-			name; 
+			name;
 
 		const rm =
-			document.createElement('button'); 
+			document.createElement('button');
 
 		rm.className =
-			'info-remove'; 
+			'info-remove';
 
-		rm.textContent = '✕'; 
+		rm.textContent = '✕';
 
-		rm.title =
-			'移出敌方查看'; 
+		rm.title = gameText('game.removeEnemy', null, '移出敌方查看');
 
 		rm.addEventListener(
 			'click',
 			function () {
 				removeFromEnemies(p);
 			}
-		); 
+		);
 
 		row.dataset.pieceId =
-			p.id; 
+			p.id;
 
-		titleLine.appendChild(nameSpan); 
-		titleLine.appendChild(rm); 
-		row.appendChild(titleLine); 
+		titleLine.appendChild(nameSpan);
+		titleLine.appendChild(rm);
+		row.appendChild(titleLine);
 
 		const lpbar =
-			document.createElement('div'); 
+			document.createElement('div');
 
 		lpbar.className =
-			'info-lpbar'; 
+			'info-lpbar';
 
 		const fill =
-			document.createElement('div'); 
+			document.createElement('div');
 
 		fill.className =
-			'info-lpfill'; 
+			'info-lpfill';
 
 		fill.style.width =
 			(ratio * 100).toFixed(1) +
-			'%'; 
+			'%';
 
 		fill.style.background =
-			color; 
+			color;
 
-		lpbar.appendChild(fill); 
-		row.appendChild(lpbar); 
+		lpbar.appendChild(fill);
+		row.appendChild(lpbar);
 
 		const lptext =
-			document.createElement('div'); 
+			document.createElement('div');
 
 		lptext.className =
-			'info-lptext'; 
+			'info-lptext';
 
 		lptext.textContent =
 			'LP ' +
 			Math.max(0, Math.round(p.lp)) +
 			' / ' +
-			(p.lpMax || p.lp); 
+			(p.lpMax || p.lp);
 
-		row.appendChild(lptext); 
+		row.appendChild(lptext);
 
-		bar.appendChild(row); 
-	}); 
-} 
+		bar.appendChild(row);
+	});
+}
 
-addEnemySelectionListener(renderEnemyPanel); 
- 
-// 切换"指挥 / 查看敌人"模式 
-function setViewMode(m) { 
+addEnemySelectionListener(renderEnemyPanel);
+
+// 切换"指挥 / 查看敌人"模式
+function setViewMode(m) {
 
 	viewMode =
 		(m === 'enemy')
 			? 'enemy'
-			: 'ally'; 
+			: 'ally';
 
 	const btn =
-		document.getElementById('button-mode'); 
+		document.getElementById('button-mode');
 
 	if (btn) {
-		btn.textContent =
-			(viewMode === 'enemy')
-				? '返回指挥'
-				: '查看敌人'; 
+		btn.textContent = (viewMode === 'enemy')
+			? gameText('game.backCommand', null, '返回指挥')
+			: gameText('game.viewEnemy', null, '查看敌人');
 	}
 
 	if (viewMode === 'enemy') {
-		clearSelection(); 
+		clearSelection();
 	} else {
-		clearEnemies(); 
+		clearEnemies();
 	}
 
-	hideArrow(); 
-} 
+	hideArrow();
+}
 
 document
 	.getElementById('button-mode')
-	.addEventListener('click', function () { 
+	.addEventListener('click', function () {
 		setViewMode(
 			viewMode === 'enemy'
 				? 'ally'
 				: 'enemy'
-		); 
-	}); 
+		);
+	});
 
-renderEnemyPanel(); 
- 
-/* ---------- 显示条悬停联动 ---------- */ 
+renderEnemyPanel();
 
-function clearHoverMatches() { 
+/* ---------- 显示条悬停联动 ---------- */
+
+function clearHoverMatches() {
 	document
 		.querySelectorAll('.chess.hover-match')
 		.forEach(el =>
@@ -2828,85 +2157,84 @@ function clearHoverMatches() {
 				'hover-blue',
 				'hover-red'
 			)
-		); 
-} 
- 
-function rowPiece(row) { 
+		);
+}
+
+function rowPiece(row) {
 
 	if (
 		!row ||
 		!row.dataset ||
 		!row.dataset.pieceId
 	) {
-		return null; 
+		return null;
 	}
 
 	return armys.find(
 		x => x.id === row.dataset.pieceId
-	) || null; 
-} 
- 
-function syncRowHover(barEl) { 
+	) || null;
+}
 
-/* ========== to-do #12/#13：战前剧情 + 战役简报 + 棋盘淡入 ========== */
-	if (!barEl) return; 
+function syncRowHover(barEl) {
 
-	function markHover(piece) { 
+	if (!barEl) return;
+
+	function markHover(piece) {
 
 		const el =
 			piece
 				? document.getElementById(piece.id)
-				: null; 
+				: null;
 
-		if (el) { 
+		if (el) {
 
 			el.classList.add(
 				'hover-match'
-			); 
+			);
 
 			el.classList.add(
 				piece.color === 'red'
 					? 'hover-red'
 					: 'hover-blue'
-			); 
+			);
 
-		} 
-	} 
+		}
+	}
 
-	function unmarkHover(piece) { 
+	function unmarkHover(piece) {
 
 		const el =
 			piece
 				? document.getElementById(piece.id)
-				: null; 
+				: null;
 
 		if (el) {
 			el.classList.remove(
 				'hover-match',
 				'hover-blue',
 				'hover-red'
-			); 
+			);
 		}
-	} 
+	}
 
-	barEl.addEventListener('mouseover', function (e) { 
+	barEl.addEventListener('mouseover', function (e) {
 
 		const row =
-			e.target.closest('.info-row'); 
+			e.target.closest('.info-row');
 
-		if (!row) return; 
+		if (!row) return;
 
 		markHover(
 			rowPiece(row)
-		); 
-	}); 
+		);
+	});
 
-	barEl.addEventListener('mouseout', function (e) { 
+	barEl.addEventListener('mouseout', function (e) {
 
 		const row =
-			e.target.closest('.info-row'); 
+			e.target.closest('.info-row');
 
-		if (!row) return; 
+		if (!row) return;
 
 		if (row.contains(e.relatedTarget)) {
 			return;
@@ -2914,62 +2242,62 @@ function syncRowHover(barEl) {
 
 		unmarkHover(
 			rowPiece(row)
-		); 
-	}); 
-} 
+		);
+	});
+}
 
 syncRowHover(
 	document.getElementById('info-bar')
-); 
+);
 
 syncRowHover(
 	document.getElementById('enemy-info')
-); 
- 
-/* ========== to-do #7：攻击范围显示 ========== */ 
+);
 
-let rangeCircles = [];   
- 
-function renderRangeOverlays() { 
+/* ========== to-do #7：攻击范围显示 ========== */
+
+let rangeCircles = [];
+
+function renderRangeOverlays() {
 
 	const old =
-		document.getElementById('range-layer'); 
+		document.getElementById('range-layer');
 
-	if (old) old.remove(); 
+	if (old) old.remove();
 
-	rangeCircles = []; 
+	rangeCircles = [];
 
 	const list =
 		(viewMode === 'enemy')
 			? selectedEnemies.filter(isAliveRed)
-			: selectedPieces.filter(isAliveBlue); 
+			: selectedPieces.filter(isAliveBlue);
 
 	if (
 		list.length === 0 ||
 		!boardContainer
 	) {
-		return; 
+		return;
 	}
 
 	const layer =
-		document.createElement('div'); 
+		document.createElement('div');
 
 	layer.id =
-		'range-layer'; 
+		'range-layer';
 
 	layer.className =
-		'range-layer'; 
+		'range-layer';
 
-	list.forEach(p => { 
+	list.forEach(p => {
 
 		const r =
 			Number(p.atkrange) *
-			distance;   
+			distance;
 
-		if (!r || r <= 0) return; 
+		if (!r || r <= 0) return;
 
 		const c =
-			document.createElement('div'); 
+			document.createElement('div');
 
 		c.className =
 			'range-circle ' +
@@ -2977,211 +2305,211 @@ function renderRangeOverlays() {
 				p.color === 'red'
 					? 'range-circle--enemy'
 					: 'range-circle--ally'
-			); 
+			);
 
 		const cx =
 			offset +
 			distance *
-			p.posx;     
+			p.posx;
 
 		const cy =
 			offset +
 			distance *
-			p.posy; 
+			p.posy;
 
 		c.style.left =
-			(cx - r) + 'px'; 
+			(cx - r) + 'px';
 
 		c.style.top =
-			(cy - r) + 'px'; 
+			(cy - r) + 'px';
 
 		c.style.width =
-			(2 * r) + 'px'; 
+			(2 * r) + 'px';
 
 		c.style.height =
-			(2 * r) + 'px'; 
+			(2 * r) + 'px';
 
-		layer.appendChild(c); 
+		layer.appendChild(c);
 
 		rangeCircles.push({
 			piece: p,
 			el: c
-		}); 
-	}); 
+		});
+	});
 
-	boardContainer.appendChild(layer); 
-} 
- 
-function updateRangePositions() { 
+	boardContainer.appendChild(layer);
+}
 
-	const keep = []; 
+function updateRangePositions() {
 
-	rangeCircles.forEach(item => { 
+	const keep = [];
 
-		const p = item.piece; 
-		const el = item.el; 
+	rangeCircles.forEach(item => {
 
-		if (p.disabled) { 
+		const p = item.piece;
+		const el = item.el;
 
-			el.remove(); 
-			return; 
-		} 
+		if (p.disabled) {
+
+			el.remove();
+			return;
+		}
 
 		const r =
 			Number(p.atkrange) *
-			distance; 
+			distance;
 
 		const cx =
 			offset +
 			distance *
-			p.posx; 
+			p.posx;
 
 		const cy =
 			offset +
 			distance *
-			p.posy; 
+			p.posy;
 
 		el.style.left =
-			(cx - r) + 'px'; 
+			(cx - r) + 'px';
 
 		el.style.top =
-			(cy - r) + 'px'; 
+			(cy - r) + 'px';
 
-		keep.push(item); 
-	}); 
+		keep.push(item);
+	});
 
-	rangeCircles = keep; 
-} 
+	rangeCircles = keep;
+}
 
 addSelectionListener(
 	renderRangeOverlays
-); 
+);
 
 addEnemySelectionListener(
 	renderRangeOverlays
-); 
- 
-/* ========== to-do #8：新兵种试玩 ========== */ 
+);
+
+/* ========== to-do #8：新兵种试玩 ========== */
 
 window.__spawnUnit =
-	function (color, unitKey, posx, posy) { 
+	function (color, unitKey, posx, posy) {
 
 		const defs = {
 			'骑': UNIT_CAVALRY,
 			'散': UNIT_SKIRMISHER,
 			'掷': UNIT_GRENADIER
-		}; 
+		};
 
-		const def = defs[unitKey]; 
+		const def = defs[unitKey];
 
-		if (!def) { 
-			console.log('[__spawnUnit] 未知兵种：骑 / 散 / 掷'); 
-			return; 
-		} 
+		if (!def) {
+			console.log('[__spawnUnit] 未知兵种：骑 / 散 / 掷');
+			return;
+		}
 
 		if (
 			typeof boardContainer === 'undefined' ||
 			!boardContainer ||
 			!armys
 		) {
-			return; 
-		} 
+			return;
+		}
 
 		const piece =
-			document.createElement('div'); 
+			document.createElement('div');
 
 		piece.className =
 			'chess chess--' +
-			color; 
+			color;
 
 		piece.id =
 			'piece-' +
-			piece_cnt; 
+			piece_cnt;
 
 		piece.innerHTML =
 			'<p>' +
 			def.cls +
-			'</p>';   
+			'</p>';
 
-		boardContainer.appendChild(piece); 
+		boardContainer.appendChild(piece);
 
-		armys.push({ 
-			id: piece.id, 
-			color: color, 
-			posx: posx, 
-			posy: posy, 
-			speed: def.speed, 
-			targetx: posx, 
-			targety: posy, 
-			atkrange: def.atkrange, 
-			atk: def.atk, 
-			lp: def.lp, 
-			lpMax: def.lp, 
-			disabled: false, 
-			cls: def.cls, 
-			img: '' 
-		}); 
+		armys.push({
+			id: piece.id,
+			color: color,
+			posx: posx,
+			posy: posy,
+			speed: def.speed,
+			targetx: posx,
+			targety: posy,
+			atkrange: def.atkrange,
+			atk: def.atk,
+			lp: def.lp,
+			lpMax: def.lp,
+			disabled: false,
+			cls: def.cls,
+			img: ''
+		});
 
 		movePieceTo(
 			piece.id,
 			posx,
 			posy
-		); 
+		);
 
-		piece_cnt ++; 
+		piece_cnt ++;
 
-		console.log('[__spawnUnit] 已生成 ' + (color === 'red' ? '敌方' : '我方') + def.cls + ' 于 (' + posx + ',' + posy + ')'); 
-	}; 
- 
-/* ========== to-do #11：常驻行动指示箭头 ========== */ 
+		console.log('[__spawnUnit] 已生成 ' + (color === 'red' ? '敌方' : '我方') + def.cls + ' 于 (' + posx + ',' + posy + ')');
+	};
 
-let orderLayer = null; 
-let orderEls = {};   
- 
-function ensureOrderLayer() { 
+/* ========== to-do #11：常驻行动指示箭头 ========== */
+
+let orderLayer = null;
+let orderEls = {};
+
+function ensureOrderLayer() {
 
 	if (
 		orderLayer &&
 		document.body.contains(orderLayer)
 	) {
-		return orderLayer; 
+		return orderLayer;
 	}
 
 	orderLayer =
-		document.createElement('div'); 
+		document.createElement('div');
 
 	orderLayer.id =
-		'order-layer'; 
+		'order-layer';
 
 	orderLayer.className =
-		'order-layer'; 
+		'order-layer';
 
 	boardContainer.appendChild(
 		orderLayer
-	); 
+	);
 
-	orderEls = {};   
+	orderEls = {};
 
-	return orderLayer; 
-} 
- 
-function removeOrderArrow(id) { 
+	return orderLayer;
+}
+
+function removeOrderArrow(id) {
 
 	const item =
-		orderEls[id]; 
+		orderEls[id];
 
-	if (item) { 
+	if (item) {
 
 		if (item.el.parentNode) {
 			item.el.parentNode.removeChild(
 				item.el
-			); 
+			);
 		}
 
-		delete orderEls[id]; 
-	} 
-} 
- 
+		delete orderEls[id];
+	}
+}
+
 function upsertOrderArrow(
 	id,
 	x1,
@@ -3189,15 +2517,15 @@ function upsertOrderArrow(
 	x2,
 	y2,
 	isRed
-) { 
+) {
 
 	let item =
-		orderEls[id]; 
+		orderEls[id];
 
-	if (!item) { 
+	if (!item) {
 
 		const el =
-			document.createElement('div'); 
+			document.createElement('div');
 
 		el.className =
 			'order-arrow' +
@@ -3205,114 +2533,114 @@ function upsertOrderArrow(
 				isRed
 					? ' order-arrow--red'
 					: ''
-			); 
+			);
 
 		el.innerHTML =
 			'<div class="oa-line"></div>' +
-			'<div class="oa-head"></div>'; 
+			'<div class="oa-head"></div>';
 
-		orderLayer.appendChild(el); 
+		orderLayer.appendChild(el);
 
-		item = { el: el }; 
+		item = { el: el };
 
 		orderEls[id] =
-			item; 
-	} 
+			item;
+	}
 
 	const dx =
-		x2 - x1; 
+		x2 - x1;
 
 	const dy =
-		y2 - y1; 
+		y2 - y1;
 
 	const dist =
 		Math.sqrt(
 			dx * dx +
 			dy * dy
-		); 
+		);
 
-	if (dist < 2) { 
+	if (dist < 2) {
 
-		removeOrderArrow(id); 
+		removeOrderArrow(id);
 
-		return; 
-	} 
+		return;
+	}
 
 	const deg =
 		Math.atan2(
 			dy,
 			dx
-		) * 180 / Math.PI; 
+		) * 180 / Math.PI;
 
 	const el =
-		item.el; 
+		item.el;
 
 	el.style.left =
-		x1 + 'px'; 
+		x1 + 'px';
 
 	el.style.top =
-		(y1 - 2) + 'px';       
+		(y1 - 2) + 'px';
 
 	el.style.width =
-		dist + 'px'; 
+		dist + 'px';
 
 	el.style.transform =
 		'rotate(' +
 		deg +
-		'deg)'; 
-} 
- 
-/* 每回合/每次下令后刷新 */ 
+		'deg)';
+}
 
-function renderOrderArrows() { 
+/* 每回合/每次下令后刷新 */
+
+function renderOrderArrows() {
 
 	if (
 		typeof boardContainer === 'undefined' ||
 		!boardContainer
 	) {
-		return; 
+		return;
 	}
 
 	const layer =
-		ensureOrderLayer(); 
+		ensureOrderLayer();
 
 	const w =
-		boardContainer.clientWidth; 
+		boardContainer.clientWidth;
 
 	const h =
-		boardContainer.clientHeight; 
+		boardContainer.clientHeight;
 
-	const seen = {}; 
+	const seen = {};
 
-	armys.forEach(u => { 
+	armys.forEach(u => {
 
-		if (u.disabled) return; 
+		if (u.disabled) return;
 
 		const dx =
 			u.targetx -
-			u.posx; 
+			u.posx;
 
 		const dy =
 			u.targety -
-			u.posy; 
+			u.posy;
 
 		if (
 			dx * dx +
 			dy * dy <
 			1e-4
 		) {
-			return;   
+			return;
 		}
 
 		const x1 =
 			offset +
 			distance *
-			u.posx; 
+			u.posx;
 
 		const y1 =
 			offset +
 			distance *
-			u.posy; 
+			u.posy;
 
 		const x2 =
 			Math.max(
@@ -3323,7 +2651,7 @@ function renderOrderArrows() {
 					u.targetx,
 					w
 				)
-			); 
+			);
 
 		const y2 =
 			Math.max(
@@ -3334,7 +2662,7 @@ function renderOrderArrows() {
 					u.targety,
 					h
 				)
-			); 
+			);
 
 		upsertOrderArrow(
 			u.id,
@@ -3343,11 +2671,11 @@ function renderOrderArrows() {
 			x2,
 			y2,
 			u.color === 'red'
-		); 
+		);
 
 		seen[u.id] =
-			true; 
-	}); 
+			true;
+	});
 
 	Object.keys(orderEls).forEach(
 		id => {
@@ -3355,122 +2683,122 @@ function renderOrderArrows() {
 				removeOrderArrow(id);
 			}
 		}
-	); 
-} 
- 
-/* ---- 预览箭头 ---- */ 
+	);
+}
 
-let previewLayer = null; 
- 
-function ensurePreviewLayer() { 
+/* ---- 预览箭头 ---- */
+
+let previewLayer = null;
+
+function ensurePreviewLayer() {
 
 	if (
 		previewLayer &&
 		document.body.contains(previewLayer)
 	) {
-		return previewLayer; 
+		return previewLayer;
 	}
 
 	previewLayer =
-		document.createElement('div'); 
+		document.createElement('div');
 
 	previewLayer.id =
-		'preview-layer'; 
+		'preview-layer';
 
 	previewLayer.className =
-		'order-layer'; 
+		'order-layer';
 
 	previewLayer.style.zIndex =
-		'5'; 
+		'5';
 
 	boardContainer.appendChild(
 		previewLayer
-	); 
+	);
 
-	return previewLayer; 
-} 
- 
-function clearOrderPreview() { 
+	return previewLayer;
+}
+
+function clearOrderPreview() {
 
 	if (
 		previewLayer &&
 		previewLayer.parentNode
 	) {
-		previewLayer.innerHTML = ''; 
+		previewLayer.innerHTML = '';
 	}
-} 
- 
+}
+
 function previewArrow(
 	x1,
 	y1,
 	x2,
 	y2
-) { 
+) {
 
 	const dx =
-		x2 - x1; 
+		x2 - x1;
 
 	const dy =
-		y2 - y1; 
+		y2 - y1;
 
 	const dist =
 		Math.sqrt(
 			dx * dx +
 			dy * dy
-		); 
+		);
 
-	if (dist < 2) return; 
+	if (dist < 2) return;
 
 	const el =
-		document.createElement('div'); 
+		document.createElement('div');
 
 	el.className =
-		'order-arrow order-arrow--preview'; 
+		'order-arrow order-arrow--preview';
 
 	el.innerHTML =
 		'<div class="oa-line"></div>' +
-		'<div class="oa-head"></div>'; 
+		'<div class="oa-head"></div>';
 
 	const deg =
 		Math.atan2(
 			dy,
 			dx
-		) * 180 / Math.PI; 
+		) * 180 / Math.PI;
 
 	el.style.left =
-		x1 + 'px'; 
+		x1 + 'px';
 
 	el.style.top =
-		(y1 - 2) + 'px'; 
+		(y1 - 2) + 'px';
 
 	el.style.width =
-		dist + 'px'; 
+		dist + 'px';
 
 	el.style.transform =
 		'rotate(' +
 		deg +
-		'deg)'; 
+		'deg)';
 
 	ensurePreviewLayer()
-		.appendChild(el); 
-} 
- 
-function renderOrderPreview(e) { 
+		.appendChild(el);
+}
 
-	clearOrderPreview(); 
+function renderOrderPreview(e) {
+
+	clearOrderPreview();
 
 	if (viewMode === 'enemy') {
-		return; 
+		return;
 	}
 
 	const list =
 		selectedPieces.filter(
 			isAliveBlue
-		); 
+		);
 
-	if (!list.length) return; 
+	if (!list.length) return;
 
-	const rect = boardContentRect(); 
+	const rect = boardContentRect();
 
 	const tx =
 		Math.max(
@@ -3480,7 +2808,7 @@ function renderOrderPreview(e) {
 				rect.left,
 				boardContainer.clientWidth
 			)
-		); 
+		);
 
 	const ty =
 		Math.max(
@@ -3490,9 +2818,9 @@ function renderOrderPreview(e) {
 				rect.top,
 				boardContainer.clientHeight
 			)
-		); 
+		);
 
-	list.forEach(p => { 
+	list.forEach(p => {
 
 		previewArrow(
 			offset +
@@ -3505,10 +2833,10 @@ function renderOrderPreview(e) {
 
 			tx,
 			ty
-		); 
-	}); 
-} 
- 
+		);
+	});
+}
+
 /* ========== to-do #12/#13：战前情报 + 剧情对话 ========== */
 
 /* ========== 从 demo-美化好 移植：棋盘揭示动画 ==========
@@ -3523,22 +2851,6 @@ function revealBattlefield() {
 	window.dispatchEvent(new CustomEvent('battlefield:revealed'));
 }
 
-function showLevelIntro() {
-	const page = document.body;
-	page.classList.remove('level-revealing');
-	page.classList.add('level-opening');
-
-	if (typeof CURRENT_LEVEL_ID === 'undefined' || typeof getLevelById !== 'function') {
-		revealBattlefield();
-		return;
-	}
-	const meta = getLevelById(CURRENT_LEVEL_ID);
-	if (!meta) {
-		revealBattlefield();
-		return;
-	}
-
-	/* 把章节资料补到每句对白上，关卡作者只需维护 levels.js。 */
 /* ========== 进关流程（B 的立绘对话/简报页 → A 的第一关教程图） ==========
  * 第一关：立绘剧情 → 战前简报（开 战）→ 教程图1 → 教程图2 → 淡入战场
  * 其余关：立绘剧情 → 战前简报（开 战）→ 淡入战场
@@ -3573,71 +2885,17 @@ function showLevelIntro() {
 			scene: meta.scene || 'campaign'
 		}, line);
 	});
+
+	/* ---- B 移植：把 A 原来的 hint 弹窗升级成一段"战役简报"页 ---- */
 	story.push({
 		who: function () { return gameText('dialogue.briefing', null, '战役简报'); },
 		role: meta.name,
 		text: meta.hint || function () { return gameText('dialogue.defeatAll', null, '击败所有红方单位即可获胜。'); },
-
-	/* ---- B 移植：把 A 原来的 hint 弹窗升级成一段"战役简报"页 ---- */
-	story.push({
-		who: '战役简报',
-		role: meta.name,
-		text: meta.hint || '击败所有红方单位即可获胜。',
 		kind: 'briefing',
 		chapter: meta.chapter || meta.name,
 		location: meta.location || '',
 		scene: meta.scene || 'campaign',
 		actionLabel: function () { return gameText('dialogue.startBattle', null, '开 战'); }
-	});
-
-	if (typeof playDialogue === 'function') {
-		playDialogue(story, revealBattlefield);
-		return;
-	}
-
-	/* 极端情况下 dialog.js 未加载，仍给出简报并允许正常进入游戏。 */
-	const overlay = document.createElement('div');
-	overlay.className = 'intro-overlay';
-	const box = document.createElement('div');
-	box.className = 'intro-box';
-	const title = document.createElement('h2');
-	title.textContent = gameContent(meta.name);
-	const body = document.createElement('p');
-	body.className = 'intro-text';
-	body.textContent = meta.hint ? gameContent(meta.hint) : gameText('dialogue.defeatAll', null, '击败所有红方单位即可获胜。');
-	const act = document.createElement('div');
-	act.className = 'intro-actions';
-	const go = document.createElement('button');
-	go.className = 'game-btn intro-go';
-	go.textContent = gameText('dialogue.startBattle', null, '开 战');
-	go.addEventListener('click', function () {
-		overlay.remove();
-		revealBattlefield();
-	});
-	act.appendChild(go);
-	box.appendChild(title);
-	box.appendChild(body);
-	box.appendChild(act);
-	overlay.appendChild(box);
-	document.body.appendChild(overlay);
-}
-
-/* 只重画文字，不刷新页面，也不改 armys / 回合 / 选中状态。 */
-window.addEventListener('ui:languagechange', function () {
-	renderFooterStatus();
-	refreshSlotSelect();
-	renderInfoPanel();
-	renderEnemyPanel();
-	const modeButton = document.getElementById('button-mode');
-	if (modeButton) {
-		modeButton.textContent = viewMode === 'enemy'
-			? gameText('game.backCommand', null, '返回指挥')
-			: gameText('game.viewEnemy', null, '查看敌人');
-	}
-	const tip = document.getElementById('loseTips');
-	if (tip && tip.dataset.sourceText) tip.textContent = gameContent(tip.dataset.sourceText);
-});
-		actionLabel: '开 战'
 	});
 
 	/* ---- A 保留：第一关的两张教程图（① 操作四步教学 ② 步兵兵种介绍） ----
@@ -3711,18 +2969,18 @@ window.addEventListener('ui:languagechange', function () {
 		box.className = 'intro-box';
 
 		const title = document.createElement('h2');
-		title.textContent = meta.name;
+			title.textContent = gameContent(meta.name);
 
 		const body = document.createElement('p');
 		body.className = 'intro-text';
-		body.textContent = meta.hint || '击败所有红方单位即可获胜。';
+			body.textContent = meta.hint ? gameContent(meta.hint) : gameText('dialogue.defeatAll', null, '击败所有红方单位即可获胜。');
 
 		const act = document.createElement('div');
 		act.className = 'intro-actions';
 
 		const go = document.createElement('button');
 		go.className = 'game-btn intro-go';
-		go.textContent = '开 战';
+			go.textContent = gameText('dialogue.startBattle', null, '开 战');
 
 		go.addEventListener('click', function () {
 			overlay.remove();
@@ -3747,3 +3005,19 @@ window.addEventListener('ui:languagechange', function () {
 	}
 	runHint();
 }
+
+/* 只更新文字，不重载页面，也不改动回合、选中或存档状态。 */
+window.addEventListener('ui:languagechange', function () {
+	renderFooterStatus();
+	refreshSlotSelect();
+	renderInfoPanel();
+	renderEnemyPanel();
+	const modeButton = document.getElementById('button-mode');
+	if (modeButton) {
+		modeButton.textContent = viewMode === 'enemy'
+			? gameText('game.backCommand', null, '返回指挥')
+			: gameText('game.viewEnemy', null, '查看敌人');
+	}
+	const tip = document.getElementById('loseTips');
+	if (tip && tip.dataset.sourceText) tip.textContent = gameContent(tip.dataset.sourceText);
+});
