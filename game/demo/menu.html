@@ -28,19 +28,51 @@
 		</ul>
 		<button id="btn-restart" class="game-btn danger-btn" title="清空活动存档 a.save，从头开始" data-i18n="menu.restart" data-i18n-title="menu.restartTitle">重新开始游戏</button>
 		<p class="page-note" data-i18n="menu.note">通关自动存入 a.save；关卡内 Save 可写入 a.save 或备份到 存档1~3；Load 就是把所选存档覆盖回 a.save。</p>
+<body class="page-menu">
+	<audio id="menu-music" loop>
+		<source src="mus/Preussens-Gloria.mp3" type="audio/mpeg">
+	</audio>
+	<div class="page-box">
+		<p class="page-kicker">IMPERIAL HEADQUARTERS · 帝国统帅部</p>
+		<h1>游戏主界面</h1>
+		<p class="page-sub">欢迎回来，<span id="welcome-name"></span>！</p>
+	</div>
+
+	<!-- 战役地图（关卡目录）：底图是本地生成的 img/europe-map.svg；
+	     标记（.map-pin）与流动虚线由 js/menu-saves.js 按存档进度渲染。
+	     注意：section 不能有 padding/border，标记的百分比坐标才对得上底图。 -->
+	<section class="campaign-map" id="campaign-map" aria-label="战役地图 · 关卡目录">
+		<img class="campaign-map__img" src="img/europe-map.svg" alt="欧洲战役地图">
+		<svg class="campaign-map__route" viewBox="0 0 1000 785" aria-hidden="true"></svg>
+	</section>
+
+	<!-- 读取存档：点按钮弹出卡片（手动备份 1~3 的载入删除 + 重新开始），由 js/menu-saves.js 构建 -->
+	<button id="btn-saves" class="menu-link" title="读取手动备份 存档1~3（载入 / 删除 / 重新开始）">读取存档</button>
+
+	<div class="page-box">
+		<ul class="menu-list">
+			<li><a class="menu-link" href="group.html">小组介绍</a></li>
+			<li><a class="menu-link" href="achievements.html" id="achv-link">成就</a></li>
+			<li><a class="menu-link" href="#" id="logout-btn">退出登录</a></li>
+		</ul>
 	</div>
 
 	<script src="js/ui.js"></script>
 	<script src="js/account.js"></script>
+	<script src="js/ui.js"></script>
 	<script src="js/save.js"></script>
 	<script src="js/levels.js"></script>
+	<!-- 存档 / 进度系统（独立模块）：页面进度 + 弹出式存档卡片 -->
+	<script src="js/menu-saves.js"></script>
+	<script src="js/bgm.js"></script>
 	<script>
+		/* 本页外壳只做四件事：登录校验、欢迎语、登出、背景音乐。
+		   存档与进度 → js/menu-saves.js；成就已独立成页 achievements.html */
 		if (!currentUser()) { window.location.href = 'index.html'; }
-		var user = currentUser();
-		document.getElementById('welcome-name').textContent = user;
+		document.getElementById('welcome-name').textContent = currentUser();
 
-		// 关卡清单来自 levels.js 注册表（to-do #10：标题/顺序/敌方 AI 都从这里读）
-		var LEVELS = getLevelList();
+		renderMenuSaves();   // 摘要 + 关卡进度（"存档 / 读档"弹窗里的内容在点开时渲染）
+		bindMenuSaves();     // "存档 / 读档"按钮
 
 		var levelList = document.getElementById('level-list');
 		var manualList = document.getElementById('manual-list');
@@ -178,7 +210,16 @@
 				}
 				manualList.appendChild(li);
 			});
+		/* 成就入口显示进度计数（成就墙本体在 achievements.html） */
+		function refreshAchvLink() {
+			if (typeof achievementState !== 'function') return;
+			var link = document.getElementById('achv-link');
+			if (!link) return;
+			var list = achievementState(currentUser());
+			var done = list.filter(function (a) { return a.unlocked; }).length;
+			link.textContent = '成就（' + done + '/' + list.length + '）';
 		}
+		refreshAchvLink();
 
 		document.getElementById('logout-btn').addEventListener('click', function (e) {
 			e.preventDefault();
@@ -235,6 +276,8 @@
 			render();
 			renderAchievements();
 		});
+		/* 主界面背景音乐 */
+		initBgm('menu-music');
 	</script>
 </body>
 </html>

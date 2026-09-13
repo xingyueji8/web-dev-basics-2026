@@ -12,6 +12,15 @@
 		<p class="page-kicker" data-i18n="kicker.empireEnding">THE UNWRITTEN EMPIRE · 未写帝国</p>
 		<h1 data-i18n="ending.empireTitle">隐藏结局 · 拿破仑统治欧洲</h1>
 		<p class="page-sub" data-i18n="ending.empireSub">你撕开了史书的另一页……</p>
+<body class="page-ending ending-empire">
+	<audio id="game-music" loop>
+		<source src="mus/La-Marseillaise.mp3" type="audio/mpeg">
+	</audio>
+
+	<div class="page-box">
+		<p class="page-kicker">THE UNWRITTEN EMPIRE · 未写帝国</p>
+		<h1>隐藏结局 · 拿破仑统治欧洲</h1>
+		<p class="page-sub">你撕开了史书的另一页……</p>
 		<div class="story-panel">
 			<p class="story-line" data-i18n="ending.empire1">拿破仑：联军崩溃了。威灵顿的望远镜落在泥里，再没有人能把它捡起来。</p>
 			<p class="story-line" data-i18n="ending.empire2">副官：陛下，伦敦、柏林、维也纳的电报都在往同一个方向发——向您称臣。</p>
@@ -22,13 +31,26 @@
 		<div class="form-box">
 			<p class="form-link"><a href="menu.html" data-i18n="ending.backMenu">返回游戏主界面</a></p>
 			<p class="form-link"><a href="game1.html" data-i18n="ending.empireRestart">从第一场战役再次出发</a></p>
+			<button id="button-next" class="game-btn">Next</button>
 		</div>
 	</div>
 	<script src="js/ui.js"></script>
 	<script src="js/account.js"></script>
+	<script src="js/ui.js"></script>
 	<script src="js/save.js"></script>
 	<script>
 		if (typeof currentUser === 'function' && currentUser()) unlockAchievement('empire');
+
+		/* 2026-09：结局页只留一个出口 —— Next 回主界面 */
+		document.getElementById('button-next').addEventListener('click', function () {
+			window.location.href = 'menu.html';
+		});
+	</script>
+
+	<script src="js/bgm.js"></script>
+	<script>
+		/* 背景音乐：先尝试播放，被浏览器拦截则等页面首次点击（见 js/bgm.js） */
+		initBgm('game-music');
 	</script>
 </body>
 </html>

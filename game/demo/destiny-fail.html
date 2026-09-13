@@ -12,6 +12,15 @@
 		<p class="page-kicker" data-i18n="kicker.destinyEnding">FATE REASSERTED · 命运归位</p>
 		<h1 data-i18n="ending.destinyTitle">隐藏失败 · 命运无法改变</h1>
 		<p class="page-sub" data-i18n="ending.destinySub">你绕过了史书，却没有绕开命运……</p>
+<body class="page-ending ending-destiny">
+	<audio id="game-music" loop>
+		<source src="mus/La-Marseillaise.mp3" type="audio/mpeg">
+	</audio>
+
+	<div class="page-box">
+		<p class="page-kicker">FATE REASSERTED · 命运归位</p>
+		<h1>隐藏失败 · 命运无法改变</h1>
+		<p class="page-sub">你绕过了史书，却没有绕开命运……</p>
 		<div class="story-panel">
 			<p class="story-line" data-i18n="ending.destiny1">拿破仑：又是滑铁卢……我明明已经绕开了那一天的雨。</p>
 			<p class="story-line" data-i18n="ending.destiny2">副官：陛下，我们确实走到了另一条路上——可守在那条路尽头的，依旧是命运本人。</p>
@@ -24,5 +33,21 @@
 		</div>
 	</div>
 	<script src="js/ui.js"></script>
+			<button id="button-next" class="game-btn">Next</button>
+		</div>
+	</div>
+
+	<script>
+		/* 2026-09：结局页只留一个出口 —— Next 回主界面 */
+		document.getElementById('button-next').addEventListener('click', function () {
+			window.location.href = 'menu.html';
+		});
+	</script>
+
+	<script src="js/bgm.js"></script>
+	<script>
+		/* 背景音乐：先尝试播放，被浏览器拦截则等页面首次点击（见 js/bgm.js） */
+		initBgm('game-music');
+	</script>
 </body>
 </html>
