@@ -106,8 +106,15 @@ function playDialogue(lines, onDone) {
 
 		['left', 'right'].forEach(function (position) {
 			const holder = portraits[position].holder;
-			holder.classList.toggle('is-speaking', !isBriefing && position === side);
+			const speaking = !isBriefing && position === side;
+			holder.classList.toggle('is-speaking', speaking);
 			holder.classList.toggle('is-listening', isBriefing || position !== side);
+			holder.classList.remove('is-gesturing');
+			if (speaking) {
+				/* 重启这一句的立绘动作；只动表现层，不改变人物图和剧情数据。 */
+				void holder.offsetWidth;
+				holder.classList.add('is-gesturing');
+			}
 		});
 
 		overlay.dataset.scene = line.scene || 'campaign';
@@ -120,6 +127,11 @@ function playDialogue(lines, onDone) {
 		progress.textContent = String(j + 1).padStart(2, '0') + ' / ' + String(lines.length).padStart(2, '0');
 		next.textContent = localize(line.actionLabel) || translate(j === lines.length - 1 ? 'dialogue.finish' : 'dialogue.continue', j === lines.length - 1 ? '完成' : '继续');
 		overlay.setAttribute('aria-label', translate('dialogue.label', '剧情对话'));
+
+		/* 姓名和正文逐句淡入，切换语言时也会立即刷新。 */
+		box.classList.remove('is-line-entering');
+		void box.offsetWidth;
+		box.classList.add('is-line-entering');
 	}
 
 	function finish() {

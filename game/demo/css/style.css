@@ -2751,3 +2751,870 @@ html[data-theme='dark'] .ui-notice { color: #eee3cb; background: #102235; }
 @media (max-height: 680px) and (min-width: 761px) {
 	.dialog-box { bottom: 0; min-height: 168px; }
 }
+
+/* ========================================================================== */
+/* 2026-09-13 UI 精修：电影化对话 / 动态登录 / 液态玻璃战役地图 / 自适应布局 */
+/* ========================================================================== */
+
+html,
+body {
+	width: 100%;
+	max-width: 100%;
+}
+
+/* 全站按钮统一为更柔和的圆角，并让点击反馈与原有 transform 定位互不冲突。 */
+button,
+.game-btn,
+.level-btn,
+.menu-link,
+.turn-button,
+.result-button,
+.ui-btn {
+	border-radius: 14px;
+	transition:
+		scale 0.18s cubic-bezier(0.2, 0.8, 0.2, 1),
+		transform 0.18s ease,
+		filter 0.18s ease,
+		box-shadow 0.18s ease;
+}
+
+button:not(:disabled):active,
+.game-btn:active,
+.level-btn:active,
+.menu-link:active,
+.turn-button:active,
+.result-button:active,
+.ui-btn:active {
+	scale: 0.96;
+}
+
+.ui-clicked {
+	animation: uiControlClick 0.38s cubic-bezier(0.2, 0.85, 0.25, 1) both;
+}
+
+@keyframes uiControlClick {
+	0% { scale: 1; }
+	34% { scale: 0.92; filter: brightness(1.18); }
+	68% { scale: 1.035; }
+	100% { scale: 1; }
+}
+
+/* 登录页：动态军情室背景 + 居中的液态玻璃登录卡。 */
+body.page-login {
+	height: 100svh;
+	min-height: 560px;
+	padding: clamp(52px, 7vh, 76px) 1rem 1.2rem;
+	overflow: hidden;
+	background:
+		radial-gradient(circle at 18% 18%, rgba(58, 100, 135, 0.34), transparent 31rem),
+		radial-gradient(circle at 82% 74%, rgba(148, 97, 42, 0.22), transparent 29rem),
+		linear-gradient(145deg, #14263a 0%, #091522 58%, #030811 100%);
+}
+
+.page-login::before {
+	z-index: -1;
+	opacity: 1;
+	background:
+		linear-gradient(115deg, transparent 16%, rgba(229, 203, 138, 0.08) 16.15% 16.35%, transparent 16.5%),
+		repeating-radial-gradient(circle at 50% 52%, transparent 0 76px, rgba(211, 189, 131, 0.055) 77px 78px),
+		repeating-linear-gradient(92deg, transparent 0 8.9vw, rgba(255, 255, 255, 0.025) 9vw),
+		linear-gradient(120deg, rgba(53, 96, 132, 0.18), transparent 48%);
+	background-size: 130% 130%, 100% 100%, 100% 100%, 150% 150%;
+	animation: loginCommandDrift 17s ease-in-out infinite alternate;
+}
+
+.page-login::after {
+	z-index: 0;
+	opacity: 0.34;
+	filter: sepia(0.08) saturate(0.78) contrast(1.08) drop-shadow(18px 18px 34px rgba(0, 0, 0, 0.45));
+	animation: loginPortraitFloat 6.5s ease-in-out infinite;
+}
+
+.page-login .page-box {
+	z-index: 2;
+	display: flex;
+	width: min(92vw, 540px);
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	padding: 0;
+	text-align: center;
+	transition: opacity 0.65s ease, filter 0.65s ease, transform 0.65s ease;
+}
+
+.page-login .page-kicker { color: #e2c981; }
+
+.page-login .page-box h1 {
+	color: #fff3d2;
+	text-shadow: 0 8px 30px rgba(0, 0, 0, 0.55);
+}
+
+.page-login .page-sub { color: #cec3aa; }
+
+.page-login .form-box {
+	width: 100%;
+	padding: clamp(1.15rem, 3vh, 1.65rem) clamp(1.25rem, 4vw, 1.8rem);
+	overflow: hidden;
+	border: 1px solid rgba(247, 226, 171, 0.46);
+	border-radius: 28px;
+	color: #f6edd8;
+	text-align: center;
+	background:
+		linear-gradient(145deg, rgba(42, 64, 84, 0.66), rgba(8, 19, 31, 0.72)),
+		linear-gradient(90deg, rgba(255, 255, 255, 0.09), transparent 48%);
+	box-shadow:
+		0 28px 76px rgba(0, 0, 0, 0.48),
+		inset 0 1px rgba(255, 255, 255, 0.24),
+		inset 0 -1px rgba(218, 196, 136, 0.16),
+		0 0 0 1px rgba(255, 255, 255, 0.035);
+	-webkit-backdrop-filter: blur(26px) saturate(1.3);
+	backdrop-filter: blur(26px) saturate(1.3);
+}
+
+.page-login .form-box::before {
+	inset: 7px;
+	border: 1px solid rgba(255, 255, 255, 0.11);
+	border-radius: 21px;
+}
+
+.page-login .form-box::after {
+	content: '';
+	position: absolute;
+	top: -80%;
+	left: -55%;
+	width: 46%;
+	height: 250%;
+	pointer-events: none;
+	background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.12), transparent);
+	transform: rotate(21deg);
+	animation: loginGlassSweep 7s ease-in-out infinite;
+}
+
+.page-login .form-box h2 {
+	color: #fff1cb;
+	text-align: center;
+	border-bottom-color: rgba(218, 196, 136, 0.24);
+}
+
+.page-login #login-form {
+	position: relative;
+	z-index: 1;
+	display: grid;
+	justify-items: stretch;
+}
+
+.page-login .form-box label {
+	color: #dfd4bd;
+	text-align: center;
+}
+
+.page-login .form-box label > span:first-child {
+	display: block;
+	text-align: center;
+}
+
+.page-login .form-box input {
+	color: #fff9e8;
+	text-align: left;
+	border-color: rgba(218, 196, 136, 0.4);
+	border-radius: 13px;
+	background: rgba(3, 12, 22, 0.58);
+}
+
+.page-login .form-box input::placeholder { color: rgba(232, 220, 194, 0.58); }
+
+.page-login .form-box button[type='submit'] {
+	justify-self: center;
+	min-width: 158px;
+	margin-top: 0.65rem;
+}
+
+.page-login .form-msg,
+.page-login .form-link {
+	position: relative;
+	z-index: 1;
+	width: 100%;
+	text-align: center;
+}
+
+.page-login .form-msg { color: #ffb2ac; }
+.page-login .form-link { color: #d8ccb2; }
+.page-login .form-link a { color: #f1d48e; }
+
+body.is-deploying .page-box {
+	opacity: 0;
+	filter: blur(16px);
+	transform: scale(1.04);
+}
+
+@keyframes loginCommandDrift {
+	0% { background-position: 0% 0%, center, center, 0% 50%; transform: scale(1); }
+	100% { background-position: 100% 35%, center, 4vw 0, 100% 50%; transform: scale(1.06); }
+}
+
+@keyframes loginPortraitFloat {
+	0%, 100% { transform: translate3d(0, 0, 0); }
+	50% { transform: translate3d(9px, -10px, 0); }
+}
+
+@keyframes loginGlassSweep {
+	0%, 22% { left: -55%; opacity: 0; }
+	35% { opacity: 1; }
+	58%, 100% { left: 128%; opacity: 0; }
+}
+
+/* 登录成功序章：三句独白按节奏出现，可随时跳过。 */
+.campaign-prologue {
+	position: fixed;
+	z-index: 1200;
+	inset: 0;
+	display: grid;
+	place-items: center;
+	visibility: hidden;
+	overflow: hidden;
+	opacity: 0;
+	color: #fff3d1;
+	background:
+		radial-gradient(circle at 50% 45%, rgba(72, 104, 126, 0.32), transparent 34rem),
+		linear-gradient(150deg, #17283b, #060d16 72%);
+	transition: opacity 0.72s ease, visibility 0.72s;
+}
+
+.campaign-prologue.is-visible {
+	visibility: visible;
+	opacity: 1;
+}
+
+.campaign-prologue::before,
+.campaign-prologue::after {
+	content: '';
+	position: absolute;
+	pointer-events: none;
+}
+
+.campaign-prologue::before {
+	inset: 0;
+	background: linear-gradient(90deg, rgba(0, 0, 0, 0.72), transparent 25% 75%, rgba(0, 0, 0, 0.72));
+}
+
+.campaign-prologue::after {
+	left: 50%;
+	bottom: 9vh;
+	width: min(62vw, 680px);
+	height: 1px;
+	background: linear-gradient(90deg, transparent, #b99a55, transparent);
+	transform: translateX(-50%) scaleX(0);
+	animation: prologueRule 4.6s 0.45s ease both;
+}
+
+.campaign-prologue__map {
+	position: absolute;
+	inset: -9%;
+	opacity: 0.16;
+	background: url('../img/europe-map.svg') center / min(1160px, 116vw) auto no-repeat;
+	filter: grayscale(1) invert(1) sepia(0.45) hue-rotate(160deg) brightness(0.88);
+	animation: prologueMapPush 6.8s ease-out both;
+}
+
+.campaign-prologue__copy {
+	position: relative;
+	z-index: 2;
+	width: min(88vw, 850px);
+	padding: 2rem;
+	text-align: center;
+	text-shadow: 0 4px 22px rgba(0, 0, 0, 0.92);
+}
+
+.campaign-prologue__kicker {
+	margin-bottom: clamp(1.5rem, 5vh, 3.2rem);
+	font-size: clamp(0.65rem, 1.2vw, 0.82rem);
+	font-weight: 700;
+	letter-spacing: 0.3em;
+	color: #d9be79;
+}
+
+.campaign-prologue__line {
+	margin: 0.85rem 0;
+	opacity: 0;
+	font-family: var(--ui-display);
+	font-size: clamp(1.05rem, 2.35vw, 1.65rem);
+	line-height: 1.7;
+	letter-spacing: 0.055em;
+	transform: translateY(18px);
+}
+
+.campaign-prologue.is-visible .campaign-prologue__line--1 { animation: prologueLine 0.72s 0.55s ease forwards; }
+.campaign-prologue.is-visible .campaign-prologue__line--2 { animation: prologueLine 0.72s 1.65s ease forwards; }
+.campaign-prologue.is-visible .campaign-prologue__line--3 { animation: prologueLine 0.72s 2.75s ease forwards; }
+
+.campaign-prologue__enter {
+	margin-top: clamp(1.5rem, 4vh, 2.8rem);
+	opacity: 0;
+	font-size: 0.74rem;
+	letter-spacing: 0.2em;
+	color: #c7b78f;
+	animation: prologueLine 0.65s 3.65s ease forwards, mapStatusPulse 1.2s 4.3s ease-in-out infinite;
+}
+
+.campaign-prologue__skip {
+	margin-top: 1.25rem;
+	padding: 0.55rem 1.15rem;
+	border: 1px solid rgba(218, 196, 136, 0.42);
+	color: #e7d7b1;
+	background: rgba(8, 21, 35, 0.56);
+	-webkit-backdrop-filter: blur(12px);
+	backdrop-filter: blur(12px);
+	cursor: pointer;
+}
+
+@keyframes prologueLine {
+	to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes prologueRule {
+	0% { transform: translateX(-50%) scaleX(0); opacity: 0; }
+	25%, 78% { transform: translateX(-50%) scaleX(1); opacity: 1; }
+	100% { transform: translateX(-50%) scaleX(0.35); opacity: 0.2; }
+}
+
+@keyframes prologueMapPush {
+	from { transform: scale(1.12) translate3d(-1.5%, 1%, 0); filter: blur(5px) grayscale(1) invert(1) sepia(0.45) hue-rotate(160deg) brightness(0.7); }
+	to { transform: scale(1) translate3d(0, 0, 0); filter: blur(0) grayscale(1) invert(1) sepia(0.45) hue-rotate(160deg) brightness(0.88); }
+}
+
+@keyframes mapStatusPulse {
+	0%, 100% { opacity: 0.55; }
+	50% { opacity: 1; }
+}
+
+/* 主菜单变成紧凑的战役指挥屏，地图本身保持原坐标系。 */
+body.page-menu {
+	gap: clamp(0.35rem, 1vh, 0.7rem);
+	padding: clamp(54px, 6vh, 66px) 1rem clamp(10px, 1.5vh, 18px);
+	color: #efe6d2;
+	background:
+		radial-gradient(circle at 50% 34%, rgba(50, 84, 112, 0.34), transparent 34rem),
+		repeating-linear-gradient(118deg, transparent 0 42px, rgba(255, 255, 255, 0.018) 43px 44px),
+		linear-gradient(150deg, #14263a, #050b13 76%);
+}
+
+.page-menu::before {
+	opacity: 0.2;
+	background:
+		repeating-radial-gradient(circle at 50% 45%, transparent 0 96px, rgba(211, 188, 130, 0.075) 97px 98px),
+		linear-gradient(90deg, transparent 49.9%, rgba(218, 196, 136, 0.08) 50%, transparent 50.1%);
+}
+
+.page-menu > .page-box:first-child {
+	width: min(94vw, 940px);
+	padding: 0;
+}
+
+.page-menu .page-box h1 {
+	margin: 0;
+	font-size: clamp(1.65rem, 4vh, 2.9rem);
+	color: #fff2d0;
+	text-shadow: 0 7px 26px rgba(0, 0, 0, 0.56);
+}
+
+.page-menu .page-kicker {
+	margin-bottom: 0.18rem;
+	color: #d9bd78;
+}
+
+.page-menu .page-sub {
+	margin: 0.12rem auto 0;
+	color: #c8bda7;
+}
+
+.campaign-map-shell {
+	position: relative;
+	z-index: 1;
+	width: min(94vw, 1000px, calc(100svh - 215px));
+	min-width: 520px;
+	padding: 8px;
+	overflow: hidden;
+	border: 1px solid rgba(234, 215, 163, 0.42);
+	border-radius: 28px;
+	background:
+		linear-gradient(145deg, rgba(63, 85, 103, 0.48), rgba(7, 18, 30, 0.72)),
+		linear-gradient(90deg, rgba(255, 255, 255, 0.1), transparent 44%);
+	box-shadow:
+		0 28px 74px rgba(0, 0, 0, 0.54),
+		inset 0 1px rgba(255, 255, 255, 0.24),
+		inset 0 -1px rgba(218, 196, 136, 0.2),
+		0 0 0 1px rgba(255, 255, 255, 0.035);
+	-webkit-backdrop-filter: blur(24px) saturate(1.28);
+	backdrop-filter: blur(24px) saturate(1.28);
+}
+
+.campaign-map-shell::before {
+	content: '';
+	position: absolute;
+	z-index: 5;
+	inset: 7px;
+	pointer-events: none;
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	border-radius: 21px;
+}
+
+.campaign-map-shell__top,
+.campaign-map-shell__bottom {
+	position: relative;
+	z-index: 6;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 0 0.72rem;
+	font-size: clamp(0.55rem, 1.1vw, 0.68rem);
+	font-weight: 700;
+	line-height: 32px;
+	letter-spacing: 0.13em;
+	color: #d8c9a6;
+}
+
+.campaign-map-shell__top { height: 32px; }
+.campaign-map-shell__bottom { height: 29px; color: #9f998b; }
+
+.campaign-map-shell__signal {
+	display: flex;
+	align-items: center;
+	gap: 0.46rem;
+	color: #9dd1bb;
+}
+
+.campaign-map-shell__signal::before {
+	content: '';
+	width: 7px;
+	height: 7px;
+	border-radius: 50%;
+	background: #72d7a8;
+	box-shadow: 0 0 0 4px rgba(114, 215, 168, 0.12), 0 0 12px #72d7a8;
+	animation: mapSignal 1.9s ease-in-out infinite;
+}
+
+@keyframes mapSignal {
+	50% { opacity: 0.46; box-shadow: 0 0 0 7px rgba(114, 215, 168, 0), 0 0 5px #72d7a8; }
+}
+
+.campaign-map-shell .campaign-map {
+	width: 100%;
+	margin: 0;
+	overflow: visible;
+	border-radius: 19px;
+	background: #101b27;
+	box-shadow: inset 0 0 42px rgba(0, 0, 0, 0.48);
+}
+
+.campaign-map-shell .campaign-map::before {
+	content: '';
+	position: absolute;
+	z-index: 1;
+	inset: 0;
+	pointer-events: none;
+	border-radius: inherit;
+	background:
+		radial-gradient(circle at 48% 44%, transparent 35%, rgba(3, 9, 15, 0.52) 100%),
+		linear-gradient(115deg, rgba(33, 67, 92, 0.28), transparent 40%, rgba(124, 77, 30, 0.12));
+	box-shadow: inset 0 0 0 1px rgba(229, 209, 153, 0.22), inset 0 0 54px rgba(0, 0, 0, 0.46);
+}
+
+.campaign-map-shell .campaign-map__img {
+	position: relative;
+	z-index: 0;
+	border-radius: 19px;
+	opacity: 0.92;
+	filter: brightness(0.62) contrast(1.2) saturate(0.55) sepia(0.18) hue-rotate(166deg);
+}
+
+.campaign-map-shell .map-route__line--done,
+.campaign-map-shell .map-route__line--draw {
+	stroke: #df6d65;
+	filter: drop-shadow(0 0 5px rgba(255, 99, 88, 0.8));
+}
+
+.campaign-map-shell .map-route__line--next {
+	stroke: rgba(229, 214, 173, 0.42);
+}
+
+.campaign-map-shell .map-pin__dot {
+	color: #fff1ca;
+	border-color: rgba(231, 205, 139, 0.88);
+	background: linear-gradient(145deg, rgba(39, 67, 91, 0.98), rgba(8, 21, 34, 0.98));
+	box-shadow:
+		0 7px 18px rgba(0, 0, 0, 0.58),
+		inset 0 1px rgba(255, 255, 255, 0.3),
+		0 0 0 3px rgba(8, 20, 33, 0.4);
+}
+
+.campaign-map-shell .map-pin__stars {
+	color: #f0cd78;
+	text-shadow: 0 1px 4px #050b12, 0 0 8px rgba(238, 201, 111, 0.55);
+}
+
+.campaign-map-shell .map-pin--done .map-pin__dot {
+	color: #ffd8d1;
+	border-color: #d96661;
+	background: linear-gradient(145deg, #743135, #2c151b);
+}
+
+.campaign-map-shell .map-pin--done .map-pin__dot::after { border-top-color: #d96661; }
+
+.campaign-map-shell .map-pin--open .map-pin__dot,
+.campaign-map-shell .map-pin--cont .map-pin__dot {
+	color: #fff1ca;
+	border-color: #e0c177;
+	background: linear-gradient(145deg, #31587a, #0b2034);
+}
+
+.campaign-map-shell .map-pin--open .map-pin__dot::after,
+.campaign-map-shell .map-pin--cont .map-pin__dot::after { border-top-color: #e0c177; }
+
+#btn-saves {
+	margin: 0.1rem auto 0;
+	min-width: 180px;
+}
+
+.page-menu > .page-box:last-of-type {
+	width: min(94vw, 760px);
+	padding: 0;
+}
+
+.page-menu .menu-list {
+	flex-direction: row;
+	margin-top: 0;
+	gap: 8px;
+}
+
+.page-menu .menu-link { min-width: 145px; }
+
+/* “自动存档”是 select 的首项：把整个选择器做成与两侧按钮相同的指挥按钮。 */
+#slot-select,
+.file-selector select {
+	min-height: 38px;
+	padding: 0.5rem 2rem 0.5rem 0.8rem;
+	border: 1px solid #091629;
+	border-radius: 14px;
+	color: #fff8e7;
+	background-color: #172d49;
+	background-image:
+		linear-gradient(45deg, transparent 50%, #d9c17d 50%),
+		linear-gradient(135deg, #d9c17d 50%, transparent 50%),
+		linear-gradient(180deg, #294d72, #0d1c30);
+	background-position: calc(100% - 15px) 50%, calc(100% - 10px) 50%, 0 0;
+	background-size: 5px 5px, 5px 5px, 100% 100%;
+	background-repeat: no-repeat;
+	box-shadow: inset 0 0 0 1px rgba(218, 196, 136, 0.25), 0 3px 8px rgba(9, 18, 31, 0.24);
+	-webkit-appearance: none;
+	appearance: none;
+	cursor: pointer;
+}
+
+#slot-select option,
+.file-selector select option {
+	color: #fff8e7;
+	background: #172d49;
+}
+
+/* 对话：底部全宽液态玻璃指挥台，背景和台面分别入场。 */
+.dialog-overlay {
+	animation: dialogueBackdropIn 0.68s ease both;
+}
+
+.dialog-overlay::before {
+	animation: dialogueAtmosphere 13s ease-in-out infinite alternate;
+}
+
+.dialog-chapter {
+	animation: dialogueChapterIn 0.72s 0.18s ease both;
+}
+
+.dialog-box {
+	min-height: clamp(190px, 27svh, 258px);
+	padding: clamp(1.15rem, 2.6vh, 1.65rem) max(1.25rem, calc((100vw - 960px) / 2)) clamp(1.15rem, 2.5vh, 1.5rem);
+	overflow: hidden;
+	border-top: 1px solid rgba(239, 214, 151, 0.72);
+	color: #f6ecd4;
+	background:
+		linear-gradient(108deg, rgba(34, 58, 79, 0.94), rgba(7, 18, 31, 0.965) 68%),
+		linear-gradient(90deg, rgba(255, 255, 255, 0.09), transparent 42%);
+	box-shadow:
+		0 -24px 72px rgba(0, 0, 0, 0.62),
+		inset 0 1px rgba(255, 255, 255, 0.22),
+		inset 0 8px 30px rgba(42, 79, 106, 0.12);
+	-webkit-backdrop-filter: blur(24px) saturate(1.26);
+	backdrop-filter: blur(24px) saturate(1.26);
+	animation: dialogueCommandEnter 0.78s cubic-bezier(0.16, 0.82, 0.22, 1) both;
+}
+
+.dialog-box::before {
+	content: '';
+	position: absolute;
+	top: 0;
+	left: 50%;
+	width: min(88vw, 980px);
+	height: 3px;
+	background: linear-gradient(90deg, transparent, #8c2d32 18%, #e2c67f 50%, #8c2d32 82%, transparent);
+	transform: translateX(-50%);
+	box-shadow: 0 0 18px rgba(224, 193, 116, 0.35);
+}
+
+.dialog-box::after {
+	content: '';
+	position: absolute;
+	inset: 8px max(8px, calc((100vw - 1040px) / 2));
+	pointer-events: none;
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	border-radius: 15px 15px 0 0;
+}
+
+.dialog-heading,
+.dialog-text {
+	position: relative;
+	z-index: 1;
+	max-width: 960px;
+}
+
+.dialog-heading {
+	border-bottom-color: rgba(218, 196, 136, 0.24);
+}
+
+.dialog-who { color: #f1cf7b; }
+.dialog-role { color: #c0b496; }
+.dialog-progress { color: #d6c18c; }
+
+.dialog-text {
+	max-width: 810px;
+	color: #f2e9d5;
+	text-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
+}
+
+.dialog-box.is-line-entering .dialog-heading {
+	animation: dialogueLineIn 0.35s ease both;
+}
+
+.dialog-box.is-line-entering .dialog-text {
+	animation: dialogueLineIn 0.52s 0.08s ease both;
+}
+
+.dialog-next {
+	right: max(1.25rem, calc((100vw - 960px) / 2));
+	bottom: clamp(1rem, 2.3vh, 1.45rem);
+	min-width: 124px;
+	border-color: rgba(232, 206, 140, 0.6);
+	background: linear-gradient(180deg, rgba(50, 91, 126, 0.96), rgba(13, 34, 55, 0.98));
+	box-shadow: 0 10px 25px rgba(0, 0, 0, 0.32), inset 0 1px rgba(255, 255, 255, 0.2);
+}
+
+.dialog-portrait::after {
+	content: '';
+	position: absolute;
+	left: 12%;
+	right: 12%;
+	bottom: 3vh;
+	height: 7vh;
+	border-radius: 50%;
+	opacity: 0;
+	background: radial-gradient(ellipse, rgba(218, 196, 136, 0.2), transparent 68%);
+	filter: blur(12px);
+	transition: opacity 0.35s ease;
+}
+
+.dialog-portrait.is-speaking::after { opacity: 1; }
+
+.dialog-portrait.is-listening img {
+	animation: portraitListeningBreath 4.8s ease-in-out infinite;
+}
+
+.dialog-portrait--left.is-speaking.is-gesturing img {
+	transform-origin: 42% 96%;
+	animation: portraitCommandGestureLeft 1.15s cubic-bezier(0.18, 0.82, 0.24, 1) both;
+}
+
+.dialog-portrait--right.is-speaking.is-gesturing img {
+	transform-origin: 58% 96%;
+	animation: portraitCommandGestureRight 1.15s cubic-bezier(0.18, 0.82, 0.24, 1) both;
+}
+
+@keyframes dialogueBackdropIn {
+	from { opacity: 0; filter: brightness(0.55); }
+	to { opacity: 1; filter: brightness(1); }
+}
+
+@keyframes dialogueAtmosphere {
+	from { transform: scale(1.02) translateX(-1.2%); opacity: 0.32; }
+	to { transform: scale(1.08) translateX(1.2%); opacity: 0.54; }
+}
+
+@keyframes dialogueChapterIn {
+	from { opacity: 0; transform: translate(-50%, -12px); letter-spacing: 0.22em; }
+	to { opacity: 1; transform: translate(-50%, 0); letter-spacing: normal; }
+}
+
+@keyframes dialogueCommandEnter {
+	0% { opacity: 0; transform: translateY(42px) scaleY(0.92); filter: blur(7px); }
+	58% { opacity: 1; transform: translateY(-5px) scaleY(1.015); filter: blur(0); }
+	100% { opacity: 1; transform: translateY(0) scaleY(1); }
+}
+
+@keyframes dialogueLineIn {
+	from { opacity: 0; transform: translateY(10px); filter: blur(3px); }
+	to { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+
+@keyframes portraitListeningBreath {
+	0%, 100% { transform: translateY(0) scale(1); }
+	50% { transform: translateY(-4px) scale(1.004); }
+}
+
+@keyframes portraitCommandGestureLeft {
+	0% { transform: translate3d(-24px, 18px, 0) scale(0.97) rotate(-1.8deg); filter: brightness(0.72); }
+	38% { transform: translate3d(8px, -12px, 0) scale(1.035) rotate(0.9deg); filter: brightness(1.12); }
+	66% { transform: translate3d(-2px, -4px, 0) scale(1.012) rotate(-0.25deg); }
+	100% { transform: translate3d(0, 0, 0) scale(1); filter: brightness(1); }
+}
+
+@keyframes portraitCommandGestureRight {
+	0% { transform: translate3d(24px, 18px, 0) scale(0.97) rotate(1.8deg); filter: brightness(0.72); }
+	38% { transform: translate3d(-8px, -12px, 0) scale(1.035) rotate(-0.9deg); filter: brightness(1.12); }
+	66% { transform: translate3d(2px, -4px, 0) scale(1.012) rotate(0.25deg); }
+	100% { transform: translate3d(0, 0, 0) scale(1); filter: brightness(1); }
+}
+
+/* 关卡布局优先装进一个视口；窄屏仍允许必要的纵向滚动。 */
+@media (min-width: 761px) and (min-height: 620px) {
+	body.page-menu,
+	body.game-page {
+		height: 100svh;
+		overflow: hidden;
+	}
+}
+
+@media (max-width: 760px) {
+	body.page-login {
+		min-height: 520px;
+		padding: 58px 0.75rem 0.75rem;
+	}
+
+	.page-login::after {
+		left: -28vw;
+		width: 78vw;
+		opacity: 0.13;
+	}
+
+	.page-login .page-kicker { margin-bottom: 0.2rem; }
+	.page-login .page-box h1 { font-size: clamp(2.25rem, 11vw, 3.1rem); }
+	.page-login .page-sub { margin-bottom: 0.7rem; font-size: 0.86rem; }
+	.page-login .form-box { padding: 1rem 1.05rem; border-radius: 22px; }
+	.page-login .form-box::before { border-radius: 16px; }
+
+	body.page-menu {
+		padding: 54px 0.55rem 12px;
+		overflow-x: hidden;
+	}
+
+	.page-menu .page-kicker { display: none; }
+	.page-menu .page-sub { font-size: 0.82rem; }
+
+	.campaign-map-shell {
+		width: min(96vw, 620px);
+		min-width: 0;
+		padding: 5px;
+		border-radius: 20px;
+	}
+
+	.campaign-map-shell::before { inset: 4px; border-radius: 16px; }
+	.campaign-map-shell__top,
+	.campaign-map-shell__bottom { padding: 0 0.45rem; font-size: 0.49rem; letter-spacing: 0.06em; }
+	.campaign-map-shell__top { height: 25px; line-height: 25px; }
+	.campaign-map-shell__bottom { height: 23px; line-height: 23px; }
+	.campaign-map-shell .campaign-map,
+	.campaign-map-shell .campaign-map__img,
+	.campaign-map-shell .campaign-map::before { border-radius: 14px; }
+
+	#btn-saves { margin-top: 0; min-width: 145px; }
+
+	.page-menu .menu-list {
+		flex-direction: row;
+		flex-wrap: nowrap;
+		gap: 5px;
+	}
+
+	.page-menu .menu-link {
+		min-width: 0;
+		padding: 0.45rem 0.68rem;
+		font-size: 0.72rem;
+	}
+
+	body.game-page {
+		padding: 5px 5px 10px;
+	}
+
+	.game-heading { min-height: 48px; }
+	.game-page #board {
+		width: min(88vw, 60svh);
+		height: min(88vw, 60svh);
+	}
+
+	#button,
+	.turn-button {
+		min-height: 38px;
+		margin-top: 6px;
+		padding: 0.5rem 1rem;
+	}
+
+	#game-actions { margin-top: 5px; gap: 5px; }
+
+	.dialog-chapter { top: 12px; }
+	.dialog-portrait { bottom: 19vh; }
+	.dialog-box {
+		min-height: 200px;
+		padding: 1rem 1rem 3.65rem;
+		border-radius: 0;
+	}
+	.dialog-box::after { inset: 6px 7px 0; }
+	.dialog-next { right: 1rem; bottom: 0.85rem; }
+	.campaign-prologue__copy { padding: 1rem; }
+	.campaign-prologue__line { margin: 0.72rem 0; }
+}
+
+@media (max-height: 680px) and (min-width: 761px) {
+	body.page-login { min-height: 0; padding-top: 48px; }
+	.page-login .page-box h1 { font-size: 2.4rem; }
+	.page-login .page-sub { margin-bottom: 0.55rem; }
+	.page-login .form-box { padding: 0.85rem 1.35rem; }
+	.page-login .form-box h2 { margin-bottom: 0.5rem; }
+	.page-login .form-box label { margin-bottom: 0.48rem; }
+
+	.campaign-map-shell {
+		width: min(82vw, 760px, calc(100svh - 170px));
+	}
+
+	.page-menu .page-box h1 { font-size: 1.7rem; }
+	.page-menu .page-sub { font-size: 0.8rem; }
+	.dialog-box { min-height: 168px; padding-top: 0.9rem; padding-bottom: 0.85rem; }
+	.dialog-text { line-height: 1.55; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.ui-clicked,
+	.page-login::before,
+	.page-login::after,
+	.page-login .form-box::after,
+	.campaign-prologue,
+	.campaign-prologue *,
+	.campaign-map-shell__signal::before,
+	.dialog-overlay,
+	.dialog-overlay::before,
+	.dialog-chapter,
+	.dialog-box,
+	.dialog-box.is-line-entering .dialog-heading,
+	.dialog-box.is-line-entering .dialog-text,
+	.dialog-portrait img {
+		animation: none !important;
+		transition-duration: 0.01ms !important;
+	}
+
+	.campaign-prologue__line,
+	.campaign-prologue__enter { opacity: 1; transform: none; }
+}

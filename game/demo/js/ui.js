@@ -69,6 +69,15 @@
 			'menu.title': '游戏主界面',
 			'menu.welcome': '欢迎回来，',
 			'menu.welcomeEnd': '！',
+			'menu.mapTheater': 'EUROPEAN THEATER · 欧洲战区',
+			'menu.mapSignal': '战役网络在线',
+			'menu.mapHint': '选择战役节点 · 推进帝国战线',
+			'transition.kicker': '序章 · 风暴将至',
+			'transition.line1': '1805年，旧秩序的王冠仍压在欧洲大陆之上。',
+			'transition.line2': '联盟在边境集结，而法兰西的鹰旗已经越过莱茵河。',
+			'transition.line3': '从这一刻起，你的每一道命令，都可能改写历史。',
+			'transition.enter': '正在展开欧洲战役地图……',
+			'transition.skip': '跳过序章',
 			'menu.autoHeading': '活动存档 · 自动存档 a.save（进度与进行中的关卡）',
 			'menu.manualHeading': '手动备份（存档 1/2/3）——“载入”会用该档覆盖 a.save',
 			'menu.group': '小组介绍',
@@ -102,7 +111,7 @@
 			'menu.deleteConfirm': '删除 {file}？',
 			'menu.restartConfirm': '重新开始将清空活动存档 a.save（通关进度、星级和进行中快照），且不可恢复；手动备份存档 1～3 会保留。确定继续？',
 			'menu.restarted': '已重新开始：a.save 已清空',
-			'game.nextTurn': '下一回合',
+			'game.nextTurn': '下一步',
 			'game.nextGame': '下一关',
 			'game.replay': '重玩本关',
 			'game.save': '保存',
@@ -231,6 +240,10 @@
 			'kicker.failEnding': 'A HISTORY UNMADE · 未竟之史', 'kicker.destinyEnding': 'FATE REASSERTED · 命運歸位',
 			'kicker.empireEnding': 'THE UNWRITTEN EMPIRE · 未寫帝國',
 			'menu.title': '遊戲主畫面', 'menu.welcome': '歡迎回來，', 'menu.welcomeEnd': '！',
+			'menu.mapTheater': 'EUROPEAN THEATER · 歐洲戰區', 'menu.mapSignal': '戰役網路在線', 'menu.mapHint': '選擇戰役節點 · 推進帝國戰線',
+			'transition.kicker': '序章 · 風暴將至', 'transition.line1': '1805年，舊秩序的王冠仍壓在歐洲大陸之上。',
+			'transition.line2': '聯盟在邊境集結，而法蘭西的鷹旗已經越過萊茵河。', 'transition.line3': '從這一刻起，你的每一道命令，都可能改寫歷史。',
+			'transition.enter': '正在展開歐洲戰役地圖……', 'transition.skip': '跳過序章',
 			'menu.autoHeading': '活動存檔 · 自動存檔 a.save（進度與進行中的關卡）',
 			'menu.manualHeading': '手動備份（存檔 1/2/3）——「載入」會用該檔覆蓋 a.save',
 			'menu.group': '小組介紹', 'menu.logout': '登出', 'menu.restart': '重新開始遊戲', 'menu.restartTitle': '清空活動存檔 a.save，從頭開始',
@@ -247,7 +260,7 @@
 			'menu.loaded': '已載入 {file} 至 a.save', 'menu.deleteConfirm': '刪除 {file}？',
 			'menu.restartConfirm': '重新開始將清空活動存檔 a.save（通關進度、星級和進行中快照），且無法復原；手動備份存檔 1～3 會保留。確定繼續？',
 			'menu.restarted': '已重新開始：a.save 已清空',
-			'game.nextTurn': '下一回合', 'game.nextGame': '下一關', 'game.replay': '重玩本關', 'game.save': '儲存', 'game.load': '讀取',
+			'game.nextTurn': '下一步', 'game.nextGame': '下一關', 'game.replay': '重玩本關', 'game.save': '儲存', 'game.load': '讀取',
 			'game.menu': '主畫面', 'game.viewEnemy': '查看敵軍', 'game.backCommand': '返回指揮', 'game.win': '勝利', 'game.lose': '戰敗',
 			'game.endingEarly': '查看結局：提早失利', 'game.endingDestiny': '查看結局：命運無法改變',
 			'game.saveTitle': '把目前關卡的中途狀態存進所選存檔', 'game.loadTitle': '讀取所選存檔的中途狀態（覆蓋目前進度）',
@@ -326,6 +339,10 @@
 			'kicker.failEnding': 'A HISTORY UNMADE', 'kicker.destinyEnding': 'FATE REASSERTED',
 			'kicker.empireEnding': 'THE UNWRITTEN EMPIRE',
 			'menu.title': 'Campaign Command', 'menu.welcome': 'Welcome back, ', 'menu.welcomeEnd': '!',
+			'menu.mapTheater': 'EUROPEAN THEATER · OPERATIONS', 'menu.mapSignal': 'Campaign network online', 'menu.mapHint': 'Select a battle node · Advance the imperial front',
+			'transition.kicker': 'PROLOGUE · THE STORM GATHERS', 'transition.line1': 'In 1805, the crowns of the old order still weighed upon Europe.',
+			'transition.line2': 'Coalitions massed at the frontier as the French Eagle crossed the Rhine.', 'transition.line3': 'From this moment, every order you give may rewrite history.',
+			'transition.enter': 'Deploying the European campaign map…', 'transition.skip': 'Skip Prologue',
 			'menu.autoHeading': 'Active campaign · Autosave a.save (progress and current battle)',
 			'menu.manualHeading': 'Manual backups (Slots 1/2/3) — loading replaces a.save',
 			'menu.group': 'Meet the team', 'menu.logout': 'Log out', 'menu.restart': 'Restart campaign', 'menu.restartTitle': 'Erase a.save and restart the campaign',
@@ -342,7 +359,7 @@
 			'menu.loaded': '{file} loaded into a.save', 'menu.deleteConfirm': 'Delete {file}?',
 			'menu.restartConfirm': 'Restarting erases campaign progress, stars, and the current battle in a.save. This cannot be undone; manual Slots 1–3 will remain. Continue?',
 			'menu.restarted': 'Campaign restarted; a.save was cleared',
-			'game.nextTurn': 'Next Turn', 'game.nextGame': 'Next Battle', 'game.replay': 'Replay', 'game.save': 'Save', 'game.load': 'Load',
+			'game.nextTurn': 'Next Step', 'game.nextGame': 'Next Battle', 'game.replay': 'Replay', 'game.save': 'Save', 'game.load': 'Load',
 			'game.menu': 'Menu', 'game.viewEnemy': 'Inspect Enemy', 'game.backCommand': 'Back to Command', 'game.win': 'You Win', 'game.lose': 'Defeat',
 			'game.endingEarly': 'View Ending: Early Defeat', 'game.endingDestiny': 'View Ending: Fate Prevails',
 			'game.saveTitle': 'Save this battle to the selected slot', 'game.loadTitle': 'Load the selected mid-battle save and replace current progress',
@@ -719,12 +736,24 @@
 		return item;
 	}
 
+	function bindButtonFeedback() {
+		document.addEventListener('click', function (event) {
+			var control = event.target.closest('button, .game-btn, .level-btn, .menu-link, .turn-button, .result-button, .ui-btn');
+			if (!control || control.disabled || control.getAttribute('aria-disabled') === 'true') return;
+			control.classList.remove('ui-clicked');
+			void control.offsetWidth;
+			control.classList.add('ui-clicked');
+			window.setTimeout(function () { control.classList.remove('ui-clicked'); }, 420);
+		});
+	}
+
 	function initUi() {
 		document.documentElement.lang = currentLanguage;
 		applyTheme();
 		createToolbar();
 		document.querySelectorAll('input[type="password"]').forEach(addPasswordToggle);
 		applyUiTranslations(document);
+		bindButtonFeedback();
 	}
 
 	document.documentElement.dataset.theme = currentTheme;

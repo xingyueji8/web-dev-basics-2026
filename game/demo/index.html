@@ -34,10 +34,41 @@
 		</div>
 	</div>
 
+	<!-- 登录成功后的战役序章：短暂建立时代背景，也让页面切换不再生硬。 -->
+	<section id="campaign-prologue" class="campaign-prologue" aria-hidden="true">
+		<div class="campaign-prologue__map" aria-hidden="true"></div>
+		<div class="campaign-prologue__copy">
+			<p class="campaign-prologue__kicker" data-i18n="transition.kicker">序章 · 风暴将至</p>
+			<p class="campaign-prologue__line campaign-prologue__line--1" data-i18n="transition.line1">1805年，旧秩序的王冠仍压在欧洲大陆之上。</p>
+			<p class="campaign-prologue__line campaign-prologue__line--2" data-i18n="transition.line2">联盟在边境集结，而法兰西的鹰旗已经越过莱茵河。</p>
+			<p class="campaign-prologue__line campaign-prologue__line--3" data-i18n="transition.line3">从这一刻起，你的每一道命令，都可能改写历史。</p>
+			<p class="campaign-prologue__enter" data-i18n="transition.enter">正在展开欧洲战役地图……</p>
+			<button id="prologue-skip" type="button" class="campaign-prologue__skip" data-i18n="transition.skip">跳过序章</button>
+		</div>
+	</section>
+
 
 	<script src="js/ui.js"></script>
 	<script src="js/account.js"></script>
 	<script>
+		function startCampaignTransition() {
+			var prologue = document.getElementById('campaign-prologue');
+			var skip = document.getElementById('prologue-skip');
+			var finished = false;
+			var go = function () {
+				if (finished) return;
+				finished = true;
+				window.location.href = 'menu.html?intro=1';
+			};
+
+			document.body.classList.add('is-deploying');
+			prologue.setAttribute('aria-hidden', 'false');
+			window.requestAnimationFrame(function () { prologue.classList.add('is-visible'); });
+			skip.addEventListener('click', go, { once: true });
+			window.setTimeout(go, 5200);
+			window.setTimeout(function () { skip.focus(); }, 650);
+		}
+
 		document.getElementById('login-form').addEventListener('submit', function (e) {
 			e.preventDefault();
 
@@ -52,8 +83,8 @@
 				return;
 			}
 
-			// 登录成功，进入游戏主界面
-			window.location.href = 'menu.html';
+			// 登录成功：先播放一段可跳过的战役序章，再进入游戏主界面。
+			startCampaignTransition();
 		});
 	</script>
 

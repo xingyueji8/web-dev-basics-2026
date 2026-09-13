@@ -44,7 +44,7 @@
 .
 ├── index.html                # 主页：内嵌登录 + 注册/小组介绍入口（背景音乐 #index-music）
 ├── register.html             # 注册页（另开页面）
-├── menu.html                 # 游戏主界面（70 余行）：页头 +「战役地图」#campaign-map +「读取存档」+ 导航
+├── menu.html                 # 游戏主界面：页头 + 液态玻璃地图外壳 +「战役地图」#campaign-map +「读取存档」+ 导航
 ├── achievements.html         # 成就页（2026-09 独立成页，成就墙 #achv-area 在 .panel-card 里；页面只有「返回主界面」一个出口）
 ├── group.html                # 小组介绍页：6 个成员卡片 + 个人页链接
 ├── game1.html                # 第 1 关 破晓防线（20 回合）
@@ -66,7 +66,7 @@
 │   ├── ChenSixing.html ZhouYunhao.html  LiXinyu.html
 │   └── tanyiqinq/ lipengzhen/ wuchenan/ chensixing/ zhouyunhao/ lixinyu/
 ├── css/
-│   └── style.css             # 全局样式（2462 行）：基础 UI → 各 to-do 段 →「2026 UI 重制」→ 每关桌面再声明 → 2026-09 新增段
+│   └── style.css             # 全局样式（3620 行）：基础 UI →「2026 UI 重制」→ 每关桌面 → 三语/夜览 → 电影化 UI 精修
 ├── js/                       # 22 个文件、7798 行
 │   ├── constants.js          # 兵种数值原型 + 图片常量 + loseTips 初值
 │   ├── pieces.js             # 棋子 DOM 创建 / 移动落点（movePieceTo）
@@ -172,13 +172,13 @@
 - **游戏页**：`constants → pieces → arrow → bgm → dialog → account → ui → save → main → fx → ai → levels → gameN`（都是 `defer`）。
   - `bgm.js` 放在 `dialog.js` **之前**：`dialog.js` 要用它的 `initBgm()` 把背景音乐挂到剧情弹窗的"继续"按钮上。
   - `gameN.js` 末尾做入口校验 / `loadGame(gameN)` / `loadSnapshot()`——**`gameX.js` 一加载就建房建棋子**。
-- **其它页**：`index.html` = `account → bgm`；`register.html` = 只有 `account`；`menu.html` = `account → ui → save → levels → menu-saves → bgm`；`achievements.html` = `account → ui → save → menu-achv → bgm`；`end-game` / `fail` / `hidden-end` = `account → ui → save → bgm`；**`destiny-fail.html` 只有 `bgm.js`**（它只显示结局文字 + 一个 `Next`，不需要账号/存档/提示组件）；`group.html` 不带任何脚本。
+- **其它页**：`index.html` = `ui → account → bgm`（登录成功后先播 5.2 秒可跳过序章）；`register.html` = 只有 `account`；`menu.html` = `account → ui → save → levels → menu-saves → bgm`；`achievements.html` = `account → ui → save → menu-achv → bgm`；`end-game` / `fail` / `hidden-end` = `account → ui → save → bgm`；**`destiny-fail.html` 只有 `bgm.js`**（它只显示结局文字 + 一个 `Next`，不需要账号/存档/提示组件）；`group.html` 不带任何脚本。
 - **只有 `gameN.js` 存本关棋子配置**，跨关卡信息一律进 `levels.js`（方便各人维护自己那关）。
 - `main.js` 一加载就 `getElementById` 一批固定元素，**缺一个就报错**（见「页面结构与各页职责」）。
 
 ## 运行机制（改动前必读）
 
-- 点一次 Next Turn = 同步连跑 **24 个"帧"**（`nextStep()`）算作一回合；画面上的平滑移动只是 CSS `transition` 补的动画，战斗结算一瞬间就完成。
+- 点一次「下一步」（原 Next Turn）= 同步连跑 **24 个"帧"**（`nextStep()`）算作一回合；画面上的平滑移动只是 CSS `transition` 补的动画，战斗结算一瞬间就完成。
 - 移动模型（蓝红统一）：玩家给棋子设"目标点"，每回合可改，不改就沿用；走到就停；**路上敌方进入攻击范围就停下开打（攻击优先于移动）**。
 - 攻击没有冷却、不分先后手，每帧结算一次，基本是双方 DPS 对耗。
 - 棋子之间**没有碰撞也不占格**，可以重叠、穿行。
@@ -258,7 +258,7 @@
 
 ## 主界面与战役地图（`menu.html` + `js/menu-saves.js`）
 
-`menu.html`（70 余行）只有：页头卡片（kicker / `h1` / 欢迎语）→ **战役地图** `#campaign-map` → `#btn-saves`「读取存档」→ 导航卡片（小组介绍 / 成就（含计数） / 退出登录）。内联脚本只做登录校验、欢迎语、`renderMenuSaves()`、`bindMenuSaves()`、`refreshAchvLink()`、登出。
+`menu.html` 只有：页头卡片（kicker / `h1` / 欢迎语）→ **液态玻璃 HUD 外壳** `.campaign-map-shell`（内含战役地图 `#campaign-map`）→ `#btn-saves`「读取存档」→ 导航卡片（小组介绍 / 成就（含计数） / 退出登录）。内联脚本只做登录校验、欢迎语、`renderMenuSaves()`、`bindMenuSaves()`、`refreshAchvLink()`、登出。外壳可做 padding / border，内层 `#campaign-map` 仍禁止这些属性，以保证旗标坐标不偏移。
 
 **地图**
 
@@ -286,7 +286,7 @@
 
 ## 结算区（`#result-area`）
 
-`game1~7.html` 把 `#win` / `#lose` 与 `#button-next-game` / `#button-replay` / `#button-fail` **一起包进 `<div id="result-area">`**（`#button`（Next Turn）留在外面）。
+`game1~7.html` 把 `#win` / `#lose` 与 `#button-next-game` / `#button-replay` / `#button-fail` **一起包进 `<div id="result-area">`**（`#button`（「下一步」）留在外面）。
 
 - CSS：`position: fixed; left/top: 50%; transform: translate(-50%,-50%); display:flex; flex-direction:column; align-items:center; gap:0.9rem; z-index:60`，并加 `pointer-events:none`（子元素 `auto`，空的时候不挡棋盘）。实测整组中心与视口中心偏差 **0.00 / 0.00**。
 - **为什么必须包一层**：只给 `#win`/`#lose` 定位是不够的——结算按钮是 `body` 的兄弟节点，会留在文档流上方。
@@ -295,7 +295,7 @@
 
 ## 页面结构与各页职责
 
-- **游戏页固定 DOM**：`#board`、`#button`（Next Turn）、`#result-area`（内含 `#win`/`#lose`/星级/`#button-next-game`/`#button-replay`/`#button-fail`）、`#info-bar`、`#enemy-info`、`#game-actions`（`#save-load-btns`（Save / `#slot-select` / Load / 查看敌人）+ `#button-exit`（Menu））、`.game-heading`（`h2` + `#footer-bar`）。**一套都不能少**，`main.js` 一加载就取。
+- **游戏页固定 DOM**：`#board`、`#button`（「下一步」）、`#result-area`（内含 `#win`/`#lose`/星级/`#button-next-game`/`#button-replay`/`#button-fail`）、`#info-bar`、`#enemy-info`、`#game-actions`（`#save-load-btns`（Save / `#slot-select` / Load / 查看敌人）+ `#button-exit`（Menu））、`.game-heading`（`h2` + `#footer-bar`）。**一套都不能少**，`main.js` 一加载就取。
 - **进关流程**（`main.js` 末尾）：第 1 关 = 立绘剧情 → 战前简报（`开 战`）→ 教程图 1 → 教程图 2 → 棋盘淡入；其余关 = 立绘剧情 → 战前简报 → 淡入。每一步都裹 `try/catch`，异常直接 `revealBattlefield()`，不会卡在全黑。
   - `level-opening` 这个 `body` 类**必须成对**：它把战场藏起来，只有 `revealBattlefield()` 会摘掉。
 - **结局页**：`.page-ending` + `.form-box` 里一个 `Next`。结局页的 `.form-box` 把背景/边框/圆角/阴影/内边距全部归零，**还必须关掉 `.page-ending .form-box::before`（`content:none`）**——那套皮肤给它挂了一个 `inset:7px` 的 1px 装饰线框，只清本体 `border`/`box-shadow` 它还在，按钮上会留一道细线。`index.html` / `register.html` 的登录注册表单走另一套皮肤（选择器带 `.page-ending` 前缀，不受影响）。
@@ -368,7 +368,7 @@
   - 22. 查看敌方功能增加数值显示（`viewMode='enemy'` 面板补攻击/射程/速度，当前只有血条）
 - **【低】**
   - 23. 单位下方直接显示小血条
-  - 24. 重排按钮，`Next Turn` 做得更明显
+  - 24. ✅ 按钮统一大圆角与点击回弹；`Next Turn` 改为「下一步」；自动存档选择器与按钮同皮肤
   - 25. 剧情引擎（**现状：已具备**——立绘版 `dialog.js` + 4 张立绘 + 7 关 `story`；若仍要推进请先说明还差什么，如打字机效果 / 表情差分 / 分支）
   - 26. （选做）单位图鉴页（5 兵种数值与定位）
   - 27. （选做）新加关卡（按 `gameN.js` + `levels.js` 注册表模式扩展）
@@ -413,3 +413,4 @@
 - **2026-09 成就页打不开（玩家报的）**：`achievements.html` 的内联脚本**末尾多了一个 `});`** → 整段 `<script>` SyntaxError、一行都不执行：欢迎语空、`#achv-area` 空、登出与 BGM 全无（看着就像"页面无法显示"）。同一处还有一行脚本标签被写成了**字面量 `\t<script src="js/menu-achv.js">`**，会在页面上渲染出一段 `\t` 文字。删掉这两个字符即恢复（`js/menu-achv.js` 与 `save.js` 都没问题）。顺手把**全项目 14 段内联脚本**用 `new Function()` 逐段语法自检，确认只有这一处坏；这条已写进「开发/验收工具约定」。
 - **2026-09 成就页去掉「退出登录」**：只保留「返回主界面」一个出口（要登出回主界面）。连同内联脚本里那段 `#logout-btn` 的点击绑定一起删——只删 DOM 不删绑定的话，`getElementById('logout-btn')` 返回 null、`.addEventListener` 抛错，又会把整段脚本带崩（和上一条是同一类坑）。实测：欢迎语 `v`、标题 `成就（4/4）`、4 行、`#logout-btn` 不存在、页面内无"退出登录"字样、`.menu-link` 只剩「返回主界面」、成就区高度 458px、BGM 仍正常加载。
 - **2026-09-13 仓库合并重复修复**：清除入口、菜单、关卡与结局页的重复文档片段和重复 ID；恢复被拼接破坏的 `main.js` / `levels.js` / `style.css`；删除 `dialog.js` 重复 `finish()`、`save.js` 提前返回与重复提示、`game7.js` 重复锁定弹窗。三类胜利分支收敛到 `completeVictory()`，统一为「存档一次 → 成就判定一次 → 通关对话 → 中央战果卡」。验收：23 个 HTML 结构/内联脚本/重复 ID 通过，22 个 JS 通过 `node --check`，213 个本地资源引用有效，CSS 大括号平衡，无合并冲突标记。
+- **2026-09-13 电影化 UI 精修**：`dialog.js` 为每句对白重启正文入场与说话者手势动画，底部对话台升级为深蓝/金线液态玻璃；登录页增加动态军情室背景、居中玻璃卡和 5.2 秒可跳过三语序章；主菜单在不改变 `#campaign-map` 坐标盒的前提下增加 `.campaign-map-shell` 玻璃 HUD，并把地图压成暗色指挥屏；全站按钮统一 14px 圆角和点击回弹；「下一回合」三语改为「下一步 / 下一步 / Next Step」；`#slot-select` 自动存档选择器改成按钮同款皮肤；桌面尽量锁在 100svh，移动端棋盘缩到 `min(88vw, 60svh)`。验收：22 个 JS 全部通过 `node --check`，17 个根目录 HTML 的内联脚本均能解析，本地资源引用 0 缺失，CSS 大括号深度归零，`git diff --check` 通过。

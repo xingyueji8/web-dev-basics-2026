@@ -17,13 +17,21 @@
 		<p class="page-sub"><span data-i18n="menu.welcome">欢迎回来，</span><span id="welcome-name"></span><span data-i18n="menu.welcomeEnd">！</span></p>
 	</div>
 
-	<!-- 战役地图（关卡目录）：底图是本地生成的 img/europe-map.svg；
-	     标记（.map-pin）与流动虚线由 js/menu-saves.js 按存档进度渲染。
-	     注意：section 不能有 padding/border，标记的百分比坐标才对得上底图。 -->
-	<section class="campaign-map" id="campaign-map" aria-label="战役地图 · 关卡目录">
-		<img class="campaign-map__img" src="img/europe-map.svg" alt="欧洲战役地图">
-		<svg class="campaign-map__route" viewBox="0 0 1000 785" aria-hidden="true"></svg>
-	</section>
+	<!-- 外层负责液态玻璃与 HUD；内层地图仍无 padding/border，避免改变图钉坐标。 -->
+	<div class="campaign-map-shell">
+		<div class="campaign-map-shell__top">
+			<span data-i18n="menu.mapTheater">EUROPEAN THEATER · 欧洲战区</span>
+			<span class="campaign-map-shell__signal" data-i18n="menu.mapSignal">战役网络在线</span>
+		</div>
+		<section class="campaign-map" id="campaign-map" aria-label="战役地图 · 关卡目录">
+			<img class="campaign-map__img" src="img/europe-map.svg" alt="欧洲战役地图">
+			<svg class="campaign-map__route" viewBox="0 0 1000 785" aria-hidden="true"></svg>
+		</section>
+		<div class="campaign-map-shell__bottom">
+			<span data-i18n="menu.mapHint">选择战役节点 · 推进帝国战线</span>
+			<span aria-hidden="true">1805 — 1815</span>
+		</div>
+	</div>
 
 	<!-- 读取存档：点按钮弹出卡片（手动备份 1~3 的载入删除 + 重新开始），由 js/menu-saves.js 构建 -->
 	<button id="btn-saves" class="menu-link" title="读取手动备份 存档1~3（载入 / 删除 / 重新开始）">读取存档</button>

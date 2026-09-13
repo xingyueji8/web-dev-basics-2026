@@ -851,7 +851,7 @@ function game8UpdateDeploymentPanel() {
             false;
 
         button.innerText =
-            'Next Turn';
+            (typeof uiT === 'function' ? uiT('game.nextTurn') : '下一步');
 
         return;
     }
