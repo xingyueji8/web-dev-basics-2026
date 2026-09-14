@@ -4801,3 +4801,405 @@ html[data-theme='dark'] body.page-group {
 	.page-group::after,
 	.page-group .member-grid::after { animation: none !important; }
 }
+
+/* ========================================================================== */
+/* 2026-09-14 剧情表演返工：拿破仑持续动作 + 序章到战役地图的跨页接镜             */
+/* ========================================================================== */
+
+/* 把“角色入场/说话动作”与图片本身拆成两层。旧版只让静态图片在开场晃一下，
+   一秒后就近似站桩；actor 层现在会在整句台词期间持续表演，并能逐句重启。 */
+.dialog-overlay .dialog-portrait__actor {
+	display: flex;
+	align-items: flex-end;
+	width: 100%;
+	height: 100%;
+	transform: translate3d(0, 0, 0);
+	transform-origin: 50% 96%;
+	backface-visibility: hidden;
+	will-change: transform;
+}
+
+/* transform 只交给 actor，避免旧的 img 动画与新动作互相覆盖。 */
+.dialog-overlay .dialog-portrait.is-speaking.is-gesturing img,
+.dialog-overlay .dialog-portrait.is-listening.is-reacting img {
+	animation: none !important;
+	transform: none !important;
+}
+
+.dialog-overlay .dialog-portrait--left.is-speaking.is-action-command .dialog-portrait__actor {
+	animation: portraitActorCommandLeft 3.5s ease-in-out infinite;
+}
+
+.dialog-overlay .dialog-portrait--right.is-speaking.is-action-command .dialog-portrait__actor {
+	animation: portraitActorCommandRight 3.5s ease-in-out infinite;
+}
+
+.dialog-overlay .dialog-portrait.is-speaking.is-action-report .dialog-portrait__actor {
+	animation: portraitActorReport 3.3s ease-in-out infinite;
+}
+
+.dialog-overlay .dialog-portrait--left.is-speaking.is-action-challenge .dialog-portrait__actor {
+	animation: portraitActorChallengeLeft 3.45s ease-in-out infinite;
+}
+
+.dialog-overlay .dialog-portrait--right.is-speaking.is-action-challenge .dialog-portrait__actor {
+	animation: portraitActorChallengeRight 3.45s ease-in-out infinite;
+}
+
+.dialog-overlay .dialog-portrait--left.is-speaking.is-action-resolve .dialog-portrait__actor {
+	animation: portraitActorResolveLeft 3.7s ease-in-out infinite;
+}
+
+.dialog-overlay .dialog-portrait--right.is-speaking.is-action-resolve .dialog-portrait__actor {
+	animation: portraitActorResolveRight 3.7s ease-in-out infinite;
+}
+
+.dialog-overlay .dialog-portrait.is-listening.is-reacting .dialog-portrait__actor {
+	animation: portraitActorListen 5.2s ease-in-out infinite;
+}
+
+/* 拿破仑单独加强：每句台词中都会两次向画面中央迈身、抬肩下令，
+   动幅约 38px / 7%，即使玩家没有盯着开场第一帧也能清楚看到。 */
+.dialog-overlay .dialog-portrait--left.is-napoleon.is-speaking.is-action-command .dialog-portrait__actor {
+	animation: napoleonCommandLeft 3.05s cubic-bezier(.42, 0, .24, 1) infinite;
+}
+
+.dialog-overlay .dialog-portrait--right.is-napoleon.is-speaking.is-action-command .dialog-portrait__actor {
+	animation: napoleonCommandRight 3.05s cubic-bezier(.42, 0, .24, 1) infinite;
+}
+
+.dialog-overlay .dialog-portrait--left.is-napoleon.is-speaking.is-action-resolve .dialog-portrait__actor {
+	animation: napoleonResolveLeft 3.35s cubic-bezier(.42, 0, .24, 1) infinite;
+}
+
+.dialog-overlay .dialog-portrait--right.is-napoleon.is-speaking.is-action-resolve .dialog-portrait__actor {
+	animation: napoleonResolveRight 3.35s cubic-bezier(.42, 0, .24, 1) infinite;
+}
+
+.dialog-overlay .dialog-portrait.is-napoleon.is-speaking::before {
+	left: 2%;
+	right: 2%;
+	height: 42%;
+	background:
+		radial-gradient(ellipse at 50% 72%, rgba(244, 209, 116, 0.36), transparent 55%),
+		repeating-radial-gradient(ellipse at 50% 72%, transparent 0 22px, rgba(238, 202, 111, 0.1) 23px 24px);
+	animation: napoleonCommandAura 1.52s ease-in-out infinite;
+}
+
+@keyframes portraitActorCommandLeft {
+	0%, 100% { transform: translate3d(0, 0, 0) scale(1) rotate(0); }
+	18% { transform: translate3d(24px, -11px, 0) scale(1.04) rotate(1.25deg); }
+	34% { transform: translate3d(8px, -4px, 0) scale(1.016) rotate(.35deg); }
+	62% { transform: translate3d(18px, -8px, 0) scale(1.03) rotate(.85deg); }
+	78% { transform: translate3d(3px, -2px, 0) scale(1.008) rotate(.12deg); }
+}
+
+@keyframes portraitActorCommandRight {
+	0%, 100% { transform: translate3d(0, 0, 0) scale(1) rotate(0); }
+	18% { transform: translate3d(-24px, -11px, 0) scale(1.04) rotate(-1.25deg); }
+	34% { transform: translate3d(-8px, -4px, 0) scale(1.016) rotate(-.35deg); }
+	62% { transform: translate3d(-18px, -8px, 0) scale(1.03) rotate(-.85deg); }
+	78% { transform: translate3d(-3px, -2px, 0) scale(1.008) rotate(-.12deg); }
+}
+
+@keyframes portraitActorReport {
+	0%, 100% { transform: translate3d(0, 0, 0) scale(1) rotate(0); }
+	18% { transform: translate3d(0, 14px, 0) scale(.985) rotate(.8deg); }
+	34% { transform: translate3d(0, -8px, 0) scale(1.025) rotate(-.5deg); }
+	58% { transform: translate3d(0, 7px, 0) scale(.994) rotate(.32deg); }
+	72% { transform: translate3d(0, -3px, 0) scale(1.008) rotate(-.12deg); }
+}
+
+@keyframes portraitActorChallengeLeft {
+	0%, 100% { transform: translate3d(0, 0, 0) scale(1) rotate(0); }
+	20% { transform: translate3d(29px, -15px, 0) scale(1.052) rotate(1.8deg); }
+	38% { transform: translate3d(10px, -5px, 0) scale(1.018) rotate(.5deg); }
+	66% { transform: translate3d(22px, -10px, 0) scale(1.038) rotate(1.1deg); }
+	82% { transform: translate3d(4px, -2px, 0) scale(1.006) rotate(.15deg); }
+}
+
+@keyframes portraitActorChallengeRight {
+	0%, 100% { transform: translate3d(0, 0, 0) scale(1) rotate(0); }
+	20% { transform: translate3d(-29px, -15px, 0) scale(1.052) rotate(-1.8deg); }
+	38% { transform: translate3d(-10px, -5px, 0) scale(1.018) rotate(-.5deg); }
+	66% { transform: translate3d(-22px, -10px, 0) scale(1.038) rotate(-1.1deg); }
+	82% { transform: translate3d(-4px, -2px, 0) scale(1.006) rotate(-.15deg); }
+}
+
+@keyframes portraitActorResolveLeft {
+	0%, 100% { transform: translate3d(0, 0, 0) scale(1) rotate(0); }
+	22% { transform: translate3d(-10px, 4px, 0) scale(.992) rotate(-1.1deg); }
+	42% { transform: translate3d(17px, -9px, 0) scale(1.034) rotate(1.15deg); }
+	62% { transform: translate3d(5px, -3px, 0) scale(1.012) rotate(.3deg); }
+	78% { transform: translate3d(13px, -6px, 0) scale(1.025) rotate(.7deg); }
+}
+
+@keyframes portraitActorResolveRight {
+	0%, 100% { transform: translate3d(0, 0, 0) scale(1) rotate(0); }
+	22% { transform: translate3d(10px, 4px, 0) scale(.992) rotate(1.1deg); }
+	42% { transform: translate3d(-17px, -9px, 0) scale(1.034) rotate(-1.15deg); }
+	62% { transform: translate3d(-5px, -3px, 0) scale(1.012) rotate(-.3deg); }
+	78% { transform: translate3d(-13px, -6px, 0) scale(1.025) rotate(-.7deg); }
+}
+
+@keyframes portraitActorListen {
+	0%, 100% { transform: translate3d(0, 0, 0) scale(1) rotate(0); }
+	46% { transform: translate3d(0, -6px, 0) scale(1.006) rotate(.2deg); }
+	54% { transform: translate3d(0, -6px, 0) scale(1.006) rotate(-.2deg); }
+}
+
+@keyframes napoleonCommandLeft {
+	0%, 100% { transform: translate3d(0, 0, 0) scale(1) rotate(0); }
+	13% { transform: translate3d(14px, -7px, 0) scale(1.025) rotate(.65deg); }
+	24% { transform: translate3d(38px, -18px, 0) scale(1.07) rotate(2.25deg); }
+	38% { transform: translate3d(12px, -6px, 0) scale(1.025) rotate(.55deg); }
+	54% { transform: translate3d(3px, -2px, 0) scale(1.008) rotate(0); }
+	69% { transform: translate3d(30px, -14px, 0) scale(1.055) rotate(1.55deg); }
+	82% { transform: translate3d(9px, -4px, 0) scale(1.018) rotate(.35deg); }
+}
+
+@keyframes napoleonCommandRight {
+	0%, 100% { transform: translate3d(0, 0, 0) scale(1) rotate(0); }
+	13% { transform: translate3d(-14px, -7px, 0) scale(1.025) rotate(-.65deg); }
+	24% { transform: translate3d(-38px, -18px, 0) scale(1.07) rotate(-2.25deg); }
+	38% { transform: translate3d(-12px, -6px, 0) scale(1.025) rotate(-.55deg); }
+	54% { transform: translate3d(-3px, -2px, 0) scale(1.008) rotate(0); }
+	69% { transform: translate3d(-30px, -14px, 0) scale(1.055) rotate(-1.55deg); }
+	82% { transform: translate3d(-9px, -4px, 0) scale(1.018) rotate(-.35deg); }
+}
+
+@keyframes napoleonResolveLeft {
+	0%, 100% { transform: translate3d(0, 0, 0) scale(1) rotate(0); }
+	17% { transform: translate3d(-13px, 6px, 0) scale(.988) rotate(-1.65deg); }
+	34% { transform: translate3d(28px, -14px, 0) scale(1.055) rotate(1.8deg); }
+	50% { transform: translate3d(8px, -5px, 0) scale(1.02) rotate(.45deg); }
+	68% { transform: translate3d(22px, -11px, 0) scale(1.044) rotate(1.25deg); }
+	84% { transform: translate3d(5px, -3px, 0) scale(1.012) rotate(.2deg); }
+}
+
+@keyframes napoleonResolveRight {
+	0%, 100% { transform: translate3d(0, 0, 0) scale(1) rotate(0); }
+	17% { transform: translate3d(13px, 6px, 0) scale(.988) rotate(1.65deg); }
+	34% { transform: translate3d(-28px, -14px, 0) scale(1.055) rotate(-1.8deg); }
+	50% { transform: translate3d(-8px, -5px, 0) scale(1.02) rotate(-.45deg); }
+	68% { transform: translate3d(-22px, -11px, 0) scale(1.044) rotate(-1.25deg); }
+	84% { transform: translate3d(-5px, -3px, 0) scale(1.012) rotate(-.2deg); }
+}
+
+@keyframes napoleonCommandAura {
+	0%, 100% { opacity: .18; transform: scale(.76); }
+	26% { opacity: .88; transform: scale(1.13); }
+	56% { opacity: .28; transform: scale(.94); }
+	72% { opacity: .68; transform: scale(1.06); }
+}
+
+/* 登录序章退场：文字先收束，地图推近并增亮，为下一页的同图接镜做准备。 */
+.campaign-prologue.is-leaving .campaign-prologue__copy {
+	pointer-events: none;
+	animation: prologueCopyHandoff .62s ease both;
+}
+
+.campaign-prologue.is-leaving .campaign-prologue__map {
+	animation: prologueMapHandoff .98s cubic-bezier(.2, .72, .18, 1) both;
+}
+
+.campaign-prologue.is-leaving::before {
+	animation: prologueShadeHandoff .98s ease both;
+}
+
+.campaign-prologue.is-leaving::after {
+	animation: prologueRuleHandoff .82s ease both;
+}
+
+@keyframes prologueCopyHandoff {
+	to { opacity: 0; transform: translateY(-24px) scale(.98); filter: blur(7px); }
+}
+
+@keyframes prologueMapHandoff {
+	from { opacity: .16; transform: scale(1); filter: blur(0) grayscale(1) invert(1) sepia(.45) hue-rotate(160deg) brightness(.88); }
+	to { opacity: .62; transform: scale(1.16); filter: blur(1px) grayscale(.48) invert(.72) sepia(.3) hue-rotate(160deg) brightness(1.08); }
+}
+
+@keyframes prologueShadeHandoff {
+	from { opacity: 1; }
+	to { opacity: .25; }
+}
+
+@keyframes prologueRuleHandoff {
+	to { opacity: 0; transform: translateX(-50%) scaleX(.08); }
+}
+
+/* 主界面接镜层：新页面先保持全屏地图，再逐渐退去；真实地图框同时从雾中落位。 */
+.campaign-arrival {
+	display: none;
+	position: fixed;
+	z-index: 1200;
+	inset: 0;
+	overflow: hidden;
+	pointer-events: none;
+	color: #ecd496;
+	background:
+		radial-gradient(circle at 50% 45%, rgba(67, 102, 130, .42), transparent 34rem),
+		linear-gradient(150deg, #17283b, #060d16 72%);
+}
+
+.page-menu.campaign-arriving .campaign-arrival {
+	display: grid;
+	place-items: center;
+}
+
+.campaign-arrival::before,
+.campaign-arrival::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+}
+
+.campaign-arrival::before {
+	z-index: 2;
+	background:
+		linear-gradient(90deg, rgba(0, 0, 0, .72), transparent 24% 76%, rgba(0, 0, 0, .72)),
+		repeating-linear-gradient(0deg, transparent 0 4px, rgba(255, 255, 255, .018) 5px);
+}
+
+.campaign-arrival::after {
+	z-index: 4;
+	border: clamp(10px, 2vw, 24px) solid rgba(3, 8, 14, .58);
+	box-shadow: inset 0 0 90px rgba(0, 0, 0, .62);
+}
+
+.campaign-arrival__map {
+	position: absolute;
+	z-index: 1;
+	inset: -10%;
+	background: url('../img/europe-map.svg') center / min(1280px, 124vw) auto no-repeat;
+	opacity: .62;
+	filter: grayscale(.48) invert(.72) sepia(.3) hue-rotate(160deg) brightness(1.08);
+	transform: scale(1.16);
+}
+
+.campaign-arrival__seal {
+	position: relative;
+	z-index: 3;
+	display: grid;
+	place-items: center;
+	gap: .45rem;
+	text-align: center;
+	text-shadow: 0 5px 24px #000;
+}
+
+.campaign-arrival__seal strong {
+	display: grid;
+	place-items: center;
+	width: 68px;
+	height: 68px;
+	border: 1px solid rgba(238, 207, 126, .78);
+	border-radius: 50%;
+	font-family: Georgia, serif;
+	font-size: 2rem;
+	font-weight: 500;
+	background: rgba(10, 26, 43, .7);
+	box-shadow: 0 0 0 7px rgba(225, 192, 107, .09), 0 0 36px rgba(225, 192, 107, .2);
+}
+
+.campaign-arrival__seal span {
+	font-size: .66rem;
+	font-weight: 700;
+	letter-spacing: .28em;
+}
+
+.page-menu > .page-box,
+.page-menu > .campaign-map-shell,
+.page-menu > #btn-saves {
+	transition: opacity .82s ease, transform .95s cubic-bezier(.18, .76, .2, 1), filter .82s ease;
+}
+
+.page-menu.campaign-arriving {
+	overflow: hidden;
+}
+
+.page-menu.campaign-arriving > .page-box:first-of-type {
+	opacity: 0;
+	filter: blur(10px);
+	transform: translateY(-18px);
+}
+
+.page-menu.campaign-arriving > .campaign-map-shell {
+	opacity: 0;
+	filter: blur(18px) saturate(.5);
+	transform: perspective(900px) translateY(34px) scale(1.13);
+	transform-origin: center;
+}
+
+.page-menu.campaign-arriving > #btn-saves,
+.page-menu.campaign-arriving > .page-box:last-of-type {
+	opacity: 0;
+	filter: blur(8px);
+	transform: translateY(18px);
+}
+
+.page-menu.campaign-arriving--reveal .campaign-arrival {
+	opacity: 0;
+	visibility: hidden;
+	transition: opacity 1.12s .22s ease, visibility 1.12s .22s;
+}
+
+.page-menu.campaign-arriving--reveal .campaign-arrival__map {
+	animation: campaignArrivalMap 1.42s cubic-bezier(.18, .72, .2, 1) both;
+}
+
+.page-menu.campaign-arriving--reveal .campaign-arrival__seal {
+	animation: campaignArrivalSeal .74s ease both;
+}
+
+.page-menu.campaign-arriving--reveal > .page-box:first-of-type,
+.page-menu.campaign-arriving--reveal > .campaign-map-shell,
+.page-menu.campaign-arriving--reveal > #btn-saves,
+.page-menu.campaign-arriving--reveal > .page-box:last-of-type {
+	opacity: 1;
+	filter: none;
+	transform: none;
+}
+
+.page-menu.campaign-arriving--reveal > .campaign-map-shell { transition-delay: .32s; }
+.page-menu.campaign-arriving--reveal > .page-box:first-of-type { transition-delay: .52s; }
+.page-menu.campaign-arriving--reveal > #btn-saves { transition-delay: .68s; }
+.page-menu.campaign-arriving--reveal > .page-box:last-of-type { transition-delay: .78s; }
+
+@keyframes campaignArrivalMap {
+	0% { opacity: .62; transform: scale(1.16); filter: grayscale(.48) invert(.72) sepia(.3) hue-rotate(160deg) brightness(1.08); }
+	55% { opacity: .78; transform: scale(1.04); filter: grayscale(.68) invert(.82) sepia(.32) hue-rotate(160deg) brightness(.94); }
+	100% { opacity: .18; transform: scale(.9); filter: blur(9px) grayscale(1) invert(1) sepia(.42) hue-rotate(160deg) brightness(.68); }
+}
+
+@keyframes campaignArrivalSeal {
+	0%, 30% { opacity: 1; transform: scale(1); }
+	100% { opacity: 0; transform: scale(.72); filter: blur(6px); }
+}
+
+@media (max-width: 760px) {
+	.dialog-overlay .dialog-portrait.is-napoleon.is-speaking .dialog-portrait__actor {
+		animation-duration: 3.6s;
+	}
+	.campaign-arrival__map { background-size: auto 92vh; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.dialog-overlay .dialog-portrait__actor,
+	.campaign-prologue.is-leaving .campaign-prologue__copy,
+	.campaign-prologue.is-leaving .campaign-prologue__map,
+	.campaign-prologue.is-leaving::before,
+	.campaign-prologue.is-leaving::after,
+	.page-menu.campaign-arriving--reveal .campaign-arrival__map,
+	.page-menu.campaign-arriving--reveal .campaign-arrival__seal {
+		animation: none !important;
+	}
+	.page-menu > .page-box,
+	.page-menu > .campaign-map-shell,
+	.page-menu > #btn-saves,
+	.page-menu.campaign-arriving--reveal .campaign-arrival {
+		transition-duration: .18s !important;
+		transition-delay: 0s !important;
+	}
+}

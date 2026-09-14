@@ -4,10 +4,21 @@
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>游戏主界面 - 拿破仑战争</title>
-	<link rel="stylesheet" href="css/style.css?v=20260914-team-motion5">
+	<link rel="stylesheet" href="css/style.css?v=20260914-cinematic7">
 	<link rel="icon" type="image/svg+xml" href="./favicon.svg">
 </head>
 <body class="page-menu" data-title-i18n="menu.title">
+	<!-- 登录序章的下一镜：先保持全屏欧洲地图，再渐进收束到主界面地图框。 -->
+	<div id="campaign-arrival" class="campaign-arrival" aria-hidden="true">
+		<div class="campaign-arrival__map" aria-hidden="true"></div>
+		<div class="campaign-arrival__seal" aria-hidden="true"><strong>N</strong><span>EUROPEAN THEATER</span></div>
+	</div>
+	<script>
+		if (new URLSearchParams(window.location.search).get('intro') === '1') {
+			document.body.classList.add('campaign-arriving');
+			document.getElementById('campaign-arrival').setAttribute('aria-hidden', 'false');
+		}
+	</script>
 	<audio id="menu-music" loop>
 		<source src="mus/Preussens-Gloria.mp3" type="audio/mpeg">
 	</audio>
@@ -59,6 +70,27 @@
 
 		renderMenuSaves();   // 摘要 + 关卡进度（"存档 / 读档"弹窗里的内容在点开时渲染）
 		bindMenuSaves();     // "存档 / 读档"按钮
+
+		/* 序章与地图之间的跨页接力：地图节点已经渲染完后才打开幕布，
+		   所以玩家看到的是一张完整地图从雾化状态逐步变清晰、落入 HUD。 */
+		if (document.body.classList.contains('campaign-arriving')) {
+			window.requestAnimationFrame(function () {
+				window.requestAnimationFrame(function () {
+					document.body.classList.add('campaign-arriving--reveal');
+				});
+			});
+			window.setTimeout(function () {
+				document.body.classList.remove('campaign-arriving', 'campaign-arriving--reveal');
+				var arrival = document.getElementById('campaign-arrival');
+				if (arrival) arrival.remove();
+				if (window.history && window.history.replaceState) {
+					try { window.history.replaceState(null, '', window.location.pathname); } catch (e) { }
+				}
+			}, 1900);
+		} else {
+			var unusedArrival = document.getElementById('campaign-arrival');
+			if (unusedArrival) unusedArrival.remove();
+		}
 
 		/* 成就入口显示进度计数（成就墙本体在 achievements.html） */
 		function refreshAchvLink() {

@@ -8,7 +8,7 @@
 - **5 个兵种**：步兵 / 炮兵 / 骑兵 / 散兵 / 掷弹兵，数值见「兵种设计」。
 - 引擎逻辑看 `js/main.js`；跨关卡信息看 `js/levels.js`；各关棋子配置在各自的 `js/gameN.js`。
 
-**规模（按当前仓库实际文件）**：根目录 HTML **17** 个 + `members/` **6** 个 = 23 个页面；JS **22** 个、约 **9237** 行；CSS 1 个、约 **4803** 行；图片 **44** 个（23 个原素材 + 21 个 WebP 运行版，含 `img/europe-map.svg`）；音频 **5** 首。
+**规模（按当前仓库实际文件）**：根目录 HTML **17** 个 + `members/` **6** 个 = 23 个页面；JS **22** 个、约 **9251** 行；CSS 1 个、约 **5205** 行；图片 **44** 个（23 个原素材 + 21 个 WebP 运行版，含 `img/europe-map.svg`）；音频 **5** 首。
 
 ## 工作方式（必须遵守）
 
@@ -42,9 +42,9 @@
 
 ```bash
 .
-├── index.html                # 主页：内嵌登录 + 注册/小组介绍入口（背景音乐 #index-music）
+├── index.html                # 主页：内嵌登录 + 注册/小组介绍入口；登录成功播放序章并以地图推镜转场
 ├── register.html             # 注册页（另开页面）
-├── menu.html                 # 游戏主界面：页头 + 液态玻璃地图外壳 +「战役地图」#campaign-map +「读取存档」+ 导航
+├── menu.html                 # 游戏主界面：承接登录序章的地图显影 + 液态玻璃战役地图 #campaign-map + 存档/导航
 ├── achievements.html         # 成就页（2026-09 独立成页，成就墙 #achv-area 在 .panel-card 里；页面只有「返回主界面」一个出口）
 ├── group.html                # 小组介绍页：主页同款军情室背景 + 玻璃成员面板 + 6 个个人页入口
 ├── game1.html                # 第 1 关 破晓防线（20 回合）
@@ -66,12 +66,12 @@
 │   ├── ChenSixing.html ZhouYunhao.html  LiXinyu.html
 │   └── tanyiqinq/ lipengzhen/ wuchenan/ chensixing/ zhouyunhao/ lixinyu/
 ├── css/
-│   └── style.css             # 全局样式（约 4803 行）：基础 UI →「2026 UI 重制」→ 每关桌面 → 三语/夜览 → 电影化 UI → 战场反馈 → 动态军令箭头 → 小组页/立绘动作
-├── js/                       # 22 个文件、约 9237 行
+│   └── style.css             # 全局样式（约 5205 行）：基础 UI →「2026 UI 重制」→ 每关桌面 → 三语/夜览 → 电影化 UI → 战场反馈 → 动态军令箭头 → 小组页 → 连续立绘动作/跨页接镜
+├── js/                       # 22 个文件、约 9251 行
 │   ├── constants.js          # 兵种数值原型 + 图片常量 + loseTips 初值
 │   ├── pieces.js             # 棋子 DOM 创建 / 移动落点（movePieceTo）
 │   ├── arrow.js              # 常驻方向箭头
-│   ├── dialog.js             # 立绘式剧情对话引擎 playDialogue()；逐句重启人物动作；顺带用 initBgm 起关卡背景音乐
+│   ├── dialog.js             # 立绘式剧情对话引擎 playDialogue()；actor 层逐句重启并在整句期间循环表演；顺带用 initBgm 起关卡背景音乐
 │   ├── account.js            # 注册/登录/登出（localStorage 账号层）
 │   ├── ui.js                 # UI 提示组件：toast / achievementToast / modalConfirm / modalNotice
 │   ├── bgm.js                # 背景音乐统一入口 initBgm()：先尝试播放，被拦才退回"点击播放"
@@ -172,7 +172,7 @@
 - **游戏页**：`constants → pieces → arrow → bgm → dialog → account → ui → save → main → fx → ai → levels → gameN`（都是 `defer`）。
   - `bgm.js` 放在 `dialog.js` **之前**：`dialog.js` 要用它的 `initBgm()` 把背景音乐挂到剧情弹窗的"继续"按钮上。
   - `gameN.js` 末尾做入口校验 / `loadGame(gameN)` / `loadSnapshot()`——**`gameX.js` 一加载就建房建棋子**。
-- **其它页**：`index.html` = `ui → account → bgm`（登录成功后先播 5.2 秒可跳过序章）；`register.html` = 只有 `account`；`menu.html` = `account → ui → save → levels → menu-saves → bgm`；`achievements.html` = `account → ui → save → menu-achv → bgm`；`end-game` / `fail` / `hidden-end` = `account → ui → save → bgm`；**`destiny-fail.html` 只有 `bgm.js`**（它只显示结局文字 + 一个 `Next`，不需要账号/存档/提示组件）；`group.html` = `ui`（三语与日夜主题）。
+- **其它页**：`index.html` = `ui → account → bgm`（登录成功后先播 5.2 秒可跳过序章，再用约 0.98 秒地图推镜离场）；`register.html` = 只有 `account`；`menu.html` = `account → ui → save → levels → menu-saves → bgm`（带 `?intro=1` 时由 `#campaign-arrival` 承接全屏地图，并用 1.9 秒显影到真实地图框）；`achievements.html` = `account → ui → save → menu-achv → bgm`；`end-game` / `fail` / `hidden-end` = `account → ui → save → bgm`；**`destiny-fail.html` 只有 `bgm.js`**（它只显示结局文字 + 一个 `Next`，不需要账号/存档/提示组件）；`group.html` = `ui`（三语与日夜主题）。
 - **只有 `gameN.js` 存本关棋子配置**，跨关卡信息一律进 `levels.js`（方便各人维护自己那关）。
 - `main.js` 一加载就 `getElementById` 一批固定元素，**缺一个就报错**（见「页面结构与各页职责」）。
 
@@ -264,7 +264,7 @@
 
 ## 主界面与战役地图（`menu.html` + `js/menu-saves.js`）
 
-`menu.html` 只有：页头卡片（kicker / `h1` / 欢迎语）→ **液态玻璃 HUD 外壳** `.campaign-map-shell`（内含战役地图 `#campaign-map`）→ `#btn-saves`「读取存档」→ 导航卡片（小组介绍 / 成就（含计数） / 退出登录）。内联脚本只做登录校验、欢迎语、`renderMenuSaves()`、`bindMenuSaves()`、`refreshAchvLink()`、登出。外壳可做 padding / border，内层 `#campaign-map` 仍禁止这些属性，以保证旗标坐标不偏移。
+`menu.html` 只有：登录序章接镜层 `#campaign-arrival`（仅 `?intro=1` 时显示）→ 页头卡片（kicker / `h1` / 欢迎语）→ **液态玻璃 HUD 外壳** `.campaign-map-shell`（内含战役地图 `#campaign-map`）→ `#btn-saves`「读取存档」→ 导航卡片（小组介绍 / 成就（含计数） / 退出登录）。内联脚本做登录校验、欢迎语、`renderMenuSaves()`、`bindMenuSaves()`、接镜显影、`refreshAchvLink()`、登出。外壳可做 padding / border，内层 `#campaign-map` 仍禁止这些属性，以保证旗标坐标不偏移。
 
 **地图**
 
@@ -425,3 +425,4 @@
 - **2026-09-14 难度曲线 / 军令剧情 / 声音控制**：`levels.js` 给 1~7 关增加连续威胁等级与独有机制说明，战前简报、左上战况条同步展示；引擎新增击杀战意连段（最多 +24% 攻击）。第 3 关改为 21 回合，红方开局整队 2 回合，骑兵降为轻骑且不再强制追炮，缓解从第 2 关到第 3 关的断崖；后续关仍按撤退、限时攻坚、强攻集火、最终抱团逐级叠加机制。`Replay` 改为一次性跳过剧情直接开战。`dialog.js` 把底部玻璃条重做为“军令台 + 蜡封 + 羊皮军报”，发言者按下令 / 汇报 / 对峙 / 沉思执行不同动作，另一侧同步回应；右上工具条新增可持久化静音按钮。17 个 HTML 统一使用 `20260914-gameplay2` 版本号。
 - **2026-09-14 Esc 与动态军令箭头**：补上战场级 Esc 监听，一次清除蓝方/敌方选中、框选、攻击范围和临时箭头，遮罩打开时不抢弹窗事件。预览箭头由“每次 mousemove 清空重建”改为按单位 id 复用节点，方向与长度连续变化；外观升级为海军蓝/帝国金描边轨道、向目标行进的信号段、扫光、起点军徽和军旗式箭头，红方使用克制的深红版本。选中单位自身增加低频指挥脉冲，`prefers-reduced-motion` 下停用动画。CSS 与 `main.js` 使用 `20260914-arrow3` 版本号。
 - **2026-09-14 小组页与剧情人物动作**：`group.html` 去掉两层内联 flex 行和旧米黄纸卡，改为主页同款深蓝军情室动态背景、帝国金标题、液态玻璃总面板与 3×2 成员卡（820px/520px 两级自适应）；补回三语副标题并统一返回按钮。`dialog.js` 每句先清除动作类，强制刷新 `img` 自身布局后同步挂回动作类，并用 Web Animations API 将新动画拨回 0 秒，保证开场第一句、翻页瞬间与同一人物连续发言都重新播放；动作幅度重新调大并区分下令、汇报、对峙、沉思、倾听回应。17 个 HTML 的 CSS 与 8 个关卡页的 `dialog.js` 缓存版本统一为 `20260914-team-motion5`。
+- **2026-09-14 剧情动作与登录接镜返工**：纠正“只在第一秒让整张静态立绘轻晃”的错误实现。`dialog.js` 在图片外增加独立 `.dialog-portrait__actor`，每句清类/强制布局后重启动画；所有发言者在整句期间循环动作，拿破仑另有 3.05/3.35 秒的下令与沉思循环（单次最大位移 38px、缩放 1.07、旋转 2.25°），并通过 `data-speaker` / `data-speaker-action` 暴露验收指纹。登录序章结束先用 0.98 秒将地图推近增亮，`menu.html?intro=1` 再由 `#campaign-arrival` 保持同图并用 1.9 秒完成“全屏地图 → 地图 HUD + 页头/按钮”的分层显影；无 `intro=1` 的普通主界面访问不播放。17 个 HTML 的 CSS 与 8 个关卡页 `dialog.js` 缓存版统一为 `20260914-cinematic7`。

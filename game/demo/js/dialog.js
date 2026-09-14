@@ -35,12 +35,15 @@ function playDialogue(lines, onDone) {
 	function makePortrait(side) {
 		const holder = document.createElement('div');
 		holder.className = 'dialog-portrait dialog-portrait--' + side + ' is-empty';
+		const actor = document.createElement('div');
+		actor.className = 'dialog-portrait__actor';
 		const img = document.createElement('img');
 		img.alt = '';
 		img.draggable = false;
-		holder.appendChild(img);
+		actor.appendChild(img);
+		holder.appendChild(actor);
 		overlay.appendChild(holder);
-		return { holder: holder, img: img, source: '' };
+		return { holder: holder, actor: actor, img: img, source: '' };
 	}
 
 	const portraits = {
@@ -117,6 +120,12 @@ function playDialogue(lines, onDone) {
 		return index % 2 === 0 ? 'command' : 'resolve';
 	}
 
+	function refreshPortraitIdentity(position) {
+		const portrait = portraits[position];
+		const source = String(portrait.source || '');
+		portrait.holder.classList.toggle('is-napoleon', /napoleon/i.test(source));
+	}
+
 	function show(j) {
 		const line = lines[j] || {};
 		const side = line.side === 'right' ? 'right' : 'left';
@@ -129,6 +138,8 @@ function playDialogue(lines, onDone) {
 			portraits[side].img.alt = localize(line.who) || translate('dialogue.character', '剧情人物');
 			portraits[side].holder.classList.remove('is-empty');
 		}
+		refreshPortraitIdentity('left');
+		refreshPortraitIdentity('right');
 
 		const action = inferPortraitAction(line, j);
 		['left', 'right'].forEach(function (position) {
@@ -147,22 +158,25 @@ function playDialogue(lines, onDone) {
 		});
 
 		const tick = ++motionTick;
-		/* 动画实际挂在 img 上：清类后读取图片布局，再同步加回动作类。
-		 * 这比只刷新 holder 或等待下一帧更可靠，也不会在翻页后短暂停成静态。 */
+		/* 动画挂在独立 actor 层上：立绘图片本身不再同时争抢 transform。
+		 * 每句先读一次 actor 布局，再重新挂动作类；这样开场第一句、连续由
+		 * 拿破仑发言以及翻页后，动作都会从第 0 帧重新开始。 */
 		pendingMotions.forEach(function (motion) {
-			const img = motion.holder.querySelector('img');
-			if (img) void img.offsetWidth;
+			const actor = motion.holder.querySelector('.dialog-portrait__actor');
+			if (actor) void actor.offsetWidth;
 			motion.holder.classList.add.apply(motion.holder.classList, motion.classes);
-			/* 现代浏览器再显式把新生成的 CSS 动画拨回 0 秒；旧浏览器仍由上面的
-			 * 强制布局方案正常启动。 */
-			if (img && typeof img.getAnimations === 'function') {
-				img.getAnimations().forEach(function (animation) {
+			if (actor) void actor.offsetWidth;
+			/* 现代浏览器显式把循环动作拨回 0 秒；旧浏览器仍由强制布局启动。 */
+			if (actor && typeof actor.getAnimations === 'function') {
+				actor.getAnimations().forEach(function (animation) {
 					animation.cancel();
 					animation.play();
 				});
 			}
 		});
 		overlay.dataset.motionTick = String(tick);
+		overlay.dataset.speaker = localize(line.who);
+		overlay.dataset.speakerAction = action;
 
 		overlay.dataset.scene = line.scene || 'campaign';
 		box.classList.toggle('dialog-box--briefing', isBriefing);
