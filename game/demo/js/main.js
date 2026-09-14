@@ -5,6 +5,10 @@ let n = 0, m = 0, piece_cnt = 0, remain_turns = 0;
 let eps = 0.000001;
 let footerMode = 'goal';
 let resumedLevel = null;
+const UNIT_MIN_SEPARATION = 0.56;
+const MAX_UNDO_USES = 3;
+let undoStack = [];
+let undoUses = 0;
 
 let boardContainer = document.getElementById('board'); // 维护 board 的容器, 以备后续使用
 let buttonContainer = document.getElementById('button'); // 维护 button 的容器, 以备后续使用
@@ -65,8 +69,32 @@ function getblock() {
 
 // 对于每一类棋子生成对应的 html
 function getHtmlForPiece(element) {
-	if(element.img) return `<img src='./img/${element.img}.png' style='width: 120%; height: 120%;' alt='${element.class}' draggable='false'></img>`;
+	if(element.img) return `<img src='./img/${element.img}.webp' style='width: 120%; height: 120%;' alt='${element.class}' draggable='false' decoding='async'></img>`;
 	else return `<p>${element.class}</p>` ;
+}
+
+/* 棋盘顶端实时血条：数据仍只存于 armys，DOM 只负责显示。 */
+function updateUnitHealth(unit) {
+	if (!unit || !unit.id) return;
+	const piece = document.getElementById(unit.id);
+	if (!piece) return;
+	let bar = piece.querySelector('.unit-health');
+	if (!bar) {
+		bar = document.createElement('span');
+		bar.className = 'unit-health';
+		bar.setAttribute('aria-hidden', 'true');
+		bar.innerHTML = '<span class="unit-health__fill"></span>';
+		piece.appendChild(bar);
+	}
+	const max = Math.max(Number(unit.lpMax) || Number(unit.lp) || 1, 1);
+	const ratio = Math.max(0, Math.min(1, Number(unit.lp) / max));
+	bar.style.setProperty('--unit-health', (ratio * 100).toFixed(1) + '%');
+	bar.classList.toggle('is-wounded', ratio <= 0.55);
+	bar.classList.toggle('is-critical', ratio <= 0.25);
+}
+
+function updateAllUnitHealth() {
+	armys.forEach(updateUnitHealth);
 }
 
 // 以备后续计算棋子位置使用
@@ -92,6 +120,7 @@ function boardContentRect() {
 
 // 加载游戏
 function loadGame(game) {
+	resetUndoHistory();
 	document.body.classList.add('level-opening');   // 从 demo-美化好 移植：开场隐藏战场，等 revealBattlefield() 淡入
 	n = game.n; m = game.m; remain_turns = game.turns_limit;
 	boardContainer.style.gridTemplateColumns = `repeat(${m}, 1fr)`;
@@ -132,6 +161,7 @@ function loadGame(game) {
 			cls: element.class,
 			img: element.img || ''
 		}) ;
+		updateUnitHealth(armys[armys.length - 1]);
 		movePieceTo(piece.id, -1.0, -1.0);
 		movePieceTo(piece.id, armys[piece_cnt].posx, armys[piece_cnt].posy);
 		piece_cnt ++ ;
@@ -143,6 +173,7 @@ function loadGame(game) {
 
 /* 从存档快照恢复一局（to-do #2/#3）：重建棋盘与棋子，字段与 captureSnapshot() 一一对应 */
 function loadSnapshot(snap) {
+	resetUndoHistory();
 	n = snap.n; m = snap.m; remain_turns = snap.remain_turns; piece_cnt = 0; armys = new Array(0);
 	selectedPieces = [];
 	selectedEnemies = [];
@@ -162,7 +193,7 @@ function loadSnapshot(snap) {
 		piece.className = `chess chess--${u.color}`;
 		piece.id = `piece-${piece_cnt}`;
 		piece.innerHTML = (u.img
-			? `<img src='./img/${u.img}.png' style='width: 120%; height: 120%;' alt='' draggable='false'></img>`
+			? `<img src='./img/${u.img}.webp' style='width: 120%; height: 120%;' alt='' draggable='false' decoding='async'></img>`
 			: `<p>${u.cls}</p>`);
 		boardContainer.appendChild(piece);
 		// 满血上限优先取本关配置的初始 LP（修复旧档缺 lpMax 时"上限=存档时当前血量"的老问题）
@@ -183,6 +214,7 @@ function loadSnapshot(snap) {
 			escaped: !!u.escaped,
 			cls: u.cls, img: u.img || ''
 		});
+		updateUnitHealth(armys[armys.length - 1]);
 		movePieceTo(piece.id, u.posx, u.posy);
 		if (u.disabled) { piece.classList.add('disabled'); piece.style.display = 'none'; }
 		piece_cnt ++;
@@ -210,6 +242,133 @@ function captureSnapshot() {
 			escaped: !!u.escaped
 		}))
 	};
+}
+
+/* 本关回退：只保存在内存中，最多使用 3 次，刷新或读档后重新计数。 */
+function captureTurnState() {
+	return {
+		remainTurns: remain_turns,
+		footerMode: footerMode,
+		resumedLevel: resumedLevel,
+		units: armys.map(function (unit) { return Object.assign({}, unit); }),
+		selectedIds: selectedPieces.map(function (unit) { return unit.id; }),
+		selectedEnemyIds: selectedEnemies.map(function (unit) { return unit.id; }),
+		game8: (typeof game8Started !== 'undefined') ? {
+			started: game8Started,
+			finished: game8Finished,
+			breakthroughCount: game8BreakthroughCount
+		} : null
+	};
+}
+
+function undoText(key, vars, fallback) {
+	return gameText(key, vars, fallback);
+}
+
+function renderUndoButton() {
+	const button = document.getElementById('button-undo');
+	if (!button) return;
+	const left = Math.max(0, MAX_UNDO_USES - undoUses);
+	button.textContent = undoText('game.undo', { left: left }, '回退 ' + left + '/3');
+	button.title = undoText('game.undoTitle', null, '回退到上一步（本关最多使用 3 次）');
+	button.disabled = left <= 0 || undoStack.length === 0;
+}
+
+function resetUndoHistory() {
+	undoStack = [];
+	undoUses = 0;
+	renderUndoButton();
+}
+
+function rememberTurnForUndo() {
+	if (undoUses >= MAX_UNDO_USES) return;
+	undoStack.push(captureTurnState());
+	if (undoStack.length > MAX_UNDO_USES) undoStack.shift();
+	renderUndoButton();
+}
+
+function restoreBattleControlsAfterUndo() {
+	document.body.classList.remove('result-active');
+	boardContainer.style.removeProperty('display');
+	buttonContainer.style.removeProperty('display');
+	const footer = document.getElementById('footer-bar');
+	if (footer) footer.style.removeProperty('display');
+	const actions = document.getElementById('game-actions');
+	if (actions) actions.style.removeProperty('display');
+	const saveButtons = document.getElementById('save-load-btns');
+	if (saveButtons) saveButtons.style.removeProperty('display');
+	const exitButton = document.getElementById('button-exit');
+	if (actions && exitButton && exitButton.parentNode !== actions) actions.appendChild(exitButton);
+	['win', 'lose', '1star', '2star', '3star', 'button-next-game', 'button-replay', 'button-fail'].forEach(function (id) {
+		const element = document.getElementById(id);
+		if (element) element.style.display = 'none';
+	});
+	['deployment-panel', 'defense-line', 'defense-hud'].forEach(function (id) {
+		const element = document.getElementById(id);
+		if (element) element.style.removeProperty('display');
+	});
+}
+
+function performUndo() {
+	if (!undoStack.length || undoUses >= MAX_UNDO_USES) {
+		if (typeof modalNotice === 'function') modalNotice(undoText('game.undoEmpty', null, '当前没有可以回退的步骤。'));
+		return;
+	}
+	const state = undoStack.pop();
+	remain_turns = state.remainTurns;
+	footerMode = state.footerMode;
+	resumedLevel = state.resumedLevel;
+	state.units.forEach(function (saved, index) {
+		const unit = armys[index];
+		if (!unit) return;
+		const id = unit.id;
+		Object.assign(unit, saved);
+		unit.id = id;
+		const piece = document.getElementById(id);
+		if (piece) {
+			piece.style.removeProperty('display');
+			piece.classList.toggle('disabled', !!unit.disabled);
+			if (unit.disabled) piece.style.display = 'none';
+		}
+		movePieceTo(id, unit.posx, unit.posy);
+		updateUnitHealth(unit);
+	});
+	selectedPieces = state.selectedIds.map(function (id) { return armys.find(function (unit) { return unit.id === id && !unit.disabled; }); }).filter(Boolean);
+	selectedEnemies = state.selectedEnemyIds.map(function (id) { return armys.find(function (unit) { return unit.id === id && !unit.disabled; }); }).filter(Boolean);
+	if (state.game8 && typeof game8Started !== 'undefined') {
+		game8Started = state.game8.started;
+		game8Finished = state.game8.finished;
+		game8BreakthroughCount = state.game8.breakthroughCount;
+		if (typeof game8UpdateBreakthroughTip === 'function') game8UpdateBreakthroughTip();
+		if (typeof game8UpdateHUD === 'function') game8UpdateHUD();
+	}
+	undoUses += 1;
+	restoreBattleControlsAfterUndo();
+	if (typeof fxDebug !== 'undefined' && fxDebug && typeof fxDebug.clearAll === 'function') fxDebug.clearAll();
+	renderFooterStatus();
+	refreshSelectedUI();
+	refreshEnemySelectionUI();
+	renderInfoPanel();
+	renderEnemyPanel();
+	updateRangePositions();
+	renderOrderArrows();
+	renderUndoButton();
+	const left = Math.max(0, MAX_UNDO_USES - undoUses);
+	if (typeof toast === 'function') toast(undoText('game.undoDone', { left: left }, '已回退一步，本关还可回退 ' + left + ' 次。'));
+}
+
+function ensureUndoButton() {
+	if (document.getElementById('button-undo')) return;
+	const actions = document.getElementById('game-actions');
+	const exitButton = document.getElementById('button-exit');
+	if (!actions || !exitButton) return;
+	const button = document.createElement('button');
+	button.id = 'button-undo';
+	button.className = 'game-btn game-btn--undo';
+	button.type = 'button';
+	button.addEventListener('click', performUndo);
+	actions.insertBefore(button, exitButton);
+	renderUndoButton();
 }
 
 /* 当前登录用户（未登录返回 ''），依赖 account.js */
@@ -248,6 +407,7 @@ function refreshSlotSelect() {
 	sel.value = AUTO_ID;
 }
 refreshSlotSelect();
+ensureUndoButton();
 
 /* 验收/调试用：控制台向某目标存中途快照（默认 a.save），或清空当前用户全部存档 */
 window.__saveMidLevel = function (id) {
@@ -336,14 +496,50 @@ function normalize(vec) {
 /* 将棋子的状态设为不能使用的状态的方法 */
 function setToDisable(element) {
 	element.disabled = true;
+	element.lp = Math.max(0, Number(element.lp) || 0);
 	const piece = document.getElementById(element.id);
 	piece.classList.add('disabled');
+	updateUnitHealth(element);
 }
 
 /* 计算棋子间距离的方法 */
 function calcdis(element1, element2) {
 	let disx = element1.posx - element2.posx, disy = element1.posy - element2.posy;
 	return Math.sqrt(disx * disx + disy * disy) ;
+}
+
+/* 近战单位的接战距离略大于棋子直径，避免为了开火而彼此叠在一起。 */
+function unitCombatRange(unit) {
+	return Math.max(Number(unit && unit.atkrange) || 0, UNIT_MIN_SEPARATION + 0.02);
+}
+
+function isUnitPositionClear(unit, x, y) {
+	return armys.every(function (other) {
+		if (other === unit || other.disabled) return true;
+		const dx = x - other.posx;
+		const dy = y - other.posy;
+		return Math.sqrt(dx * dx + dy * dy) >= UNIT_MIN_SEPARATION - eps;
+	});
+}
+
+/* 目标点被占用时依次尝试左右绕行；全部受阻就停在原位，绝不穿过或堆叠。 */
+function collisionSafeMove(unit, startx, starty, desiredx, desiredy) {
+	if (isUnitPositionClear(unit, desiredx, desiredy)) return { x: desiredx, y: desiredy };
+	const dx = desiredx - startx;
+	const dy = desiredy - starty;
+	const length = Math.sqrt(dx * dx + dy * dy);
+	if (length <= eps) return { x: startx, y: starty };
+	const ux = dx / length;
+	const uy = dy / length;
+	const angles = [55, -55, 90, -90];
+	for (let i = 0; i < angles.length; i++) {
+		const rad = angles[i] * Math.PI / 180;
+		const vx = ux * Math.cos(rad) - uy * Math.sin(rad);
+		const vy = ux * Math.sin(rad) + uy * Math.cos(rad);
+		const candidate = { x: startx + vx * length, y: starty + vy * length };
+		if (isUnitPositionClear(unit, candidate.x, candidate.y)) return candidate;
+	}
+	return { x: startx, y: starty };
 }
 
 /* 从 armys 中选出距离 element 最近的异色棋子的方法，用于确认棋子攻击目标 */
@@ -401,7 +597,7 @@ function findFirstEnterAttackRange(element, startx, starty, endx, endy) {
         const sy = starty - enemy.posy;
 
         const startDis2 = sx * sx + sy * sy;
-        const range = Number(element.atkrange);
+        const range = unitCombatRange(element);
 
         if (startDis2 <= range * range + eps) {
             continue;
@@ -468,7 +664,7 @@ function nextStep() {
 		let inAttackRange = false;
 
 		if(atktar != null) {
-			inAttackRange = calcdis(element, atktar) < element.atkrange;
+			inAttackRange = calcdis(element, atktar) < unitCombatRange(element);
 		}
 
 		// ============================================
@@ -491,6 +687,7 @@ function nextStep() {
 			// 已经到达目标，如果在攻击范围内，就攻击
 			if(inAttackRange) {
 				atktar.lp -= element.atk;
+				updateUnitHealth(atktar);
 				if (typeof fxMarkFired === 'function') fxMarkFired(element, atktar);
 
 				if(atktar.lp <= 0)
@@ -525,6 +722,7 @@ function nextStep() {
 				// 正在靠近敌人/没有离开
 				// 保持原来的攻击逻辑
 				atktar.lp -= element.atk;
+				updateUnitHealth(atktar);
 				if (typeof fxMarkFired === 'function') fxMarkFired(element, atktar);
 
 				if(atktar.lp <= 0)
@@ -542,22 +740,22 @@ function nextStep() {
 		// 按照原来的逻辑移动一步
 		// ============================================
 
-		let beforeMove = (element.targetx - element.posx > eps);
+		const startx = element.posx;
+		const starty = element.posy;
+		const remainingX = element.targetx - startx;
+		const remainingY = element.targety - starty;
+		const remaining = Math.sqrt(remainingX * remainingX + remainingY * remainingY);
+		const travel = Math.min(Math.max(Number(element.speed) || 0, 0), remaining);
+		const desiredx = startx + targetvector.x * travel;
+		const desiredy = starty + targetvector.y * travel;
+		const safe = collisionSafeMove(element, startx, starty, desiredx, desiredy);
+		element.posx = safe.x;
+		element.posy = safe.y;
 
-		element.posx = element.posx + targetvector.x * element.speed;
-		element.posy = element.posy + targetvector.y * element.speed;
-
-		// 防止移过目标位置
-
-		let afterMove = (element.targetx - element.posx > eps);
-
-		if(beforeMove != afterMove) {
-			element.posx = element.targetx;
-			element.posy = element.targety;
+		if (Math.abs(element.posx - startx) > eps || Math.abs(element.posy - starty) > eps) {
+			movePieceTo(element.id, element.posx, element.posy);
+			if (typeof fxMarkMoving === 'function') fxMarkMoving(element, startx, starty);
 		}
-
-		movePieceTo(element.id, element.posx, element.posy);
-		if (typeof fxMarkMoving === 'function') fxMarkMoving(element);
 	});
 
 	// ============================================
@@ -650,7 +848,7 @@ function showVictoryDialogue(star, saveResult) {
 	const lines = [
 		{
 			who: '拿破仑', role: '法兰西皇帝', side: 'left',
-			portrait: 'img/portraits/napoleon.png',
+			portrait: 'img/portraits/napoleon.webp',
 			chapter: meta ? meta.chapter : '帝国战记', location: meta ? meta.location : '', scene: meta ? meta.scene : 'campaign',
 			text: function () { return gameText('victory.napoleon', null, '敌军已经退出战场。收拢队伍，把鹰旗带到下一条战线。'); }
 		},
@@ -1239,6 +1437,10 @@ function checkWinState() {
 }
 
 buttonContainer.addEventListener('click', function() {
+	rememberTurnForUndo();
+	const positionsBefore = armys.map(function (unit) {
+		return { id: unit.id, x: unit.posx, y: unit.posy };
+	});
 	// 点击按钮时推进 24 '帧'
 	clearDisable();
 
@@ -1270,6 +1472,10 @@ buttonContainer.addEventListener('click', function() {
 	}
 	// 开火特效（2026-09）：24 帧结算完后，给本回合开过火的单位统一生成烟雾 / 枪口火光
 	if (typeof fxFlush === 'function') fxFlush();
+	const anyUnitMoved = positionsBefore.some(function (before) {
+		const unit = armys.find(function (item) { return item.id === before.id; });
+		return unit && (Math.abs(unit.posx - before.x) > eps || Math.abs(unit.posy - before.y) > eps);
+	});
 
 	// 防止误触造成多次触发
 	// 测试时会注释，发布时记得删去
@@ -1282,6 +1488,12 @@ buttonContainer.addEventListener('click', function() {
 	renderEnemyPanel();
 	updateRangePositions();
 	renderOrderArrows();
+	renderUndoButton();
+	if (!anyUnitMoved && boardContainer.style.display !== 'none') {
+		const message = gameText('game.noMovement', null, '本回合没有任何部队机动。请先下达移动命令，或确认双方已经进入交火。');
+		if (typeof modalNotice === 'function') modalNotice(message);
+		else if (typeof toast === 'function') toast(message);
+	}
 });
 
 /* ========== to-do #4：选中集合 + 画框多选 ========== */
@@ -2851,6 +3063,25 @@ function revealBattlefield() {
 	window.dispatchEvent(new CustomEvent('battlefield:revealed'));
 }
 
+/* 剧情开始时就在后台请求并解码立绘、教程图，让后续翻页不再临时等待。 */
+const introAssetWarmers = [];
+function warmIntroImage(src) {
+	if (!src || introAssetWarmers.some(function (image) { return image.src.indexOf(src.replace(/^\.\//, '')) !== -1; })) return;
+	const image = new Image();
+	image.decoding = 'async';
+	image.src = src;
+	introAssetWarmers.push(image);
+	if (typeof image.decode === 'function') image.decode().catch(function () { /* load 事件仍可继续 */ });
+}
+
+function warmLevelIntroAssets(meta) {
+	(meta.story || []).forEach(function (line) { if (line.portrait) warmIntroImage(line.portrait); });
+	if (Number(CURRENT_LEVEL_ID) === 1) {
+		warmIntroImage('./img/level1-intro-1.webp');
+		warmIntroImage('./img/level1-intro-2.webp');
+	}
+}
+
 /* ========== 进关流程（B 的立绘对话/简报页 → A 的第一关教程图） ==========
  * 第一关：立绘剧情 → 战前简报（开 战）→ 教程图1 → 教程图2 → 淡入战场
  * 其余关：立绘剧情 → 战前简报（开 战）→ 淡入战场
@@ -2863,6 +3094,7 @@ function showLevelIntro() {
 
 	const meta = getLevelById(CURRENT_LEVEL_ID);
 	if (!meta) { revealBattlefield(); return; }
+	warmLevelIntroAssets(meta);
 
 	/* 兜底包装：任何一步抛异常都必须 revealBattlefield()，
 	 * 否则页面会永久停在 .level-opening（战场全黑、按钮全部不可点）。 */
@@ -2907,8 +3139,8 @@ function showLevelIntro() {
 		}
 
 		const images = [
-			'./img/level1-intro-1.png',
-			'./img/level1-intro-2.png'
+			'./img/level1-intro-1.webp',
+			'./img/level1-intro-2.webp'
 		];
 
 		let index = 0;
@@ -2929,9 +3161,14 @@ function showLevelIntro() {
 
 			const image = document.createElement('img');
 			image.className = 'level-intro-image';
+			image.decoding = 'async';
+			image.fetchPriority = 'high';
 			image.src = images[index];
 			image.alt = '第一关教程图 ' + (index + 1);
 			image.draggable = false;
+			imageBox.classList.add('is-loading');
+			image.addEventListener('load', function () { imageBox.classList.remove('is-loading'); }, { once: true });
+			image.addEventListener('error', function () { imageBox.classList.remove('is-loading'); }, { once: true });
 
 			/* 图片右上角关闭按钮 */
 			const closeBtn = document.createElement('button');
@@ -2947,6 +3184,7 @@ function showLevelIntro() {
 
 			imageBox.appendChild(image);
 			imageBox.appendChild(closeBtn);
+			if (image.complete) imageBox.classList.remove('is-loading');
 
 			overlay.appendChild(imageBox);
 			document.body.appendChild(overlay);
@@ -3010,6 +3248,7 @@ function showLevelIntro() {
 window.addEventListener('ui:languagechange', function () {
 	renderFooterStatus();
 	refreshSlotSelect();
+	renderUndoButton();
 	renderInfoPanel();
 	renderEnemyPanel();
 	const modeButton = document.getElementById('button-mode');

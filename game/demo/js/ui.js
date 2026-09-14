@@ -112,6 +112,11 @@
 			'menu.restartConfirm': '重新开始将清空活动存档 a.save（通关进度、星级和进行中快照），且不可恢复；手动备份存档 1～3 会保留。确定继续？',
 			'menu.restarted': '已重新开始：a.save 已清空',
 			'game.nextTurn': '下一步',
+			'game.undo': '回退 {left}/3',
+			'game.undoTitle': '回退到上一步（本关最多使用 3 次）',
+			'game.undoEmpty': '当前没有可以回退的步骤。',
+			'game.undoDone': '已回退一步，本关还可回退 {left} 次。',
+			'game.noMovement': '本回合没有任何部队机动。请先下达移动命令，或确认双方已经进入交火。',
 			'game.nextGame': '下一关',
 			'game.replay': '重玩本关',
 			'game.save': '保存',
@@ -261,6 +266,9 @@
 			'menu.restartConfirm': '重新開始將清空活動存檔 a.save（通關進度、星級和進行中快照），且無法復原；手動備份存檔 1～3 會保留。確定繼續？',
 			'menu.restarted': '已重新開始：a.save 已清空',
 			'game.nextTurn': '下一步', 'game.nextGame': '下一關', 'game.replay': '重玩本關', 'game.save': '儲存', 'game.load': '讀取',
+			'game.undo': '回退 {left}/3', 'game.undoTitle': '回退到上一步（本關最多使用 3 次）',
+			'game.undoEmpty': '目前沒有可以回退的步驟。', 'game.undoDone': '已回退一步，本關還可回退 {left} 次。',
+			'game.noMovement': '本回合沒有任何部隊機動。請先下達移動命令，或確認雙方已經進入交火。',
 			'game.menu': '主畫面', 'game.viewEnemy': '查看敵軍', 'game.backCommand': '返回指揮', 'game.win': '勝利', 'game.lose': '戰敗',
 			'game.endingEarly': '查看結局：提早失利', 'game.endingDestiny': '查看結局：命運無法改變',
 			'game.saveTitle': '把目前關卡的中途狀態存進所選存檔', 'game.loadTitle': '讀取所選存檔的中途狀態（覆蓋目前進度）',
@@ -360,6 +368,9 @@
 			'menu.restartConfirm': 'Restarting erases campaign progress, stars, and the current battle in a.save. This cannot be undone; manual Slots 1–3 will remain. Continue?',
 			'menu.restarted': 'Campaign restarted; a.save was cleared',
 			'game.nextTurn': 'Next Step', 'game.nextGame': 'Next Battle', 'game.replay': 'Replay', 'game.save': 'Save', 'game.load': 'Load',
+			'game.undo': 'Undo {left}/3', 'game.undoTitle': 'Return to the previous step (up to 3 uses per battle)',
+			'game.undoEmpty': 'There is no previous step to restore.', 'game.undoDone': 'Step restored. {left} undo uses remain.',
+			'game.noMovement': 'No unit moved this turn. Issue a movement order, or confirm that both sides are already engaged.',
 			'game.menu': 'Menu', 'game.viewEnemy': 'Inspect Enemy', 'game.backCommand': 'Back to Command', 'game.win': 'You Win', 'game.lose': 'Defeat',
 			'game.endingEarly': 'View Ending: Early Defeat', 'game.endingDestiny': 'View Ending: Fate Prevails',
 			'game.saveTitle': 'Save this battle to the selected slot', 'game.loadTitle': 'Load the selected mid-battle save and replace current progress',
@@ -622,7 +633,11 @@
 	function toggleTheme() {
 		currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
 		writeSetting(THEME_KEY, currentTheme);
+		document.documentElement.classList.remove('theme-switching');
+		void document.documentElement.offsetWidth;
+		document.documentElement.classList.add('theme-switching');
 		applyTheme();
+		window.setTimeout(function () { document.documentElement.classList.remove('theme-switching'); }, 620);
 	}
 
 	function updateToolbar() {

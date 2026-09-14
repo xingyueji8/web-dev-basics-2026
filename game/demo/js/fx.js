@@ -2,7 +2,7 @@
  *
  * 表现层，不改动 nextStep() 的移动 / 攻击逻辑。main.js 里只有 4 行钩子：
  *   fxMarkFired(unit, target)   开火结算处标记（每个单位每回合只记一次）→ 烟雾 + 枪口火光
- *   fxMarkMoving(unit)          移动落点处标记（每个单位每回合只记一次）→ 沿路径铺尾迹
+ *   fxMarkMoving(unit, x0, y0)  移动前坐标标记（每个单位每回合只记一次）→ 沿路径铺尾迹
  *   fxFlush()                   24 帧跑完后调用一次，统一生成上述特效
  *
  * 设计要点：
@@ -23,11 +23,13 @@
 	var PUFFS = 6;             // 每撮烟团数（加浓后）
 	var PUFF_MS = 1500;        // 烟团寿命（与 CSS 动画一致）
 	var FLASH_MS = 240;        // 枪口火光寿命
+	var TRACER_MS = 320;       // 弹道曳光寿命
+	var IMPACT_MS = 760;       // 命中火花 / 冲击环寿命
 	var TRAIL_MAX = 10;        // 单条尾迹最多尘团数
 	var TRAIL_MS = 1400;       // 尘团寿命
 	var TRAIL_MIN_CELL = 0.3;  // 位移小于该值（格）不画尾迹
 	var TRAIL_SPACING = 0.35;  // 尾迹尘团的目标间距（格）
-	var SPAWN_DELAY = 400;     // 与棋子滑行对齐
+	var SPAWN_DELAY = 40;      // 点击后立刻起尘，和棋子 0.4s 滑行同时开始
 	var MAX_NODES = 200;       // 同屏节点上限
 
 	/* ---- 状态 ---- */
@@ -140,6 +142,45 @@
 		track(el, FLASH_MS + 220);
 	}
 
+	/* 弹道：从射手中心拉出一条短促亮线，命中点再生成冲击环。 */
+	function tracer(unit, target) {
+		var box = fxLayer();
+		var g = geom();
+		if (!box || !g || !unit || !target) return;
+		var x0 = g.off + g.dist * unit.posx;
+		var y0 = g.off + g.dist * unit.posy;
+		var x1 = g.off + g.dist * target.posx;
+		var y1 = g.off + g.dist * target.posy;
+		var dx = x1 - x0;
+		var dy = y1 - y0;
+		var length = Math.sqrt(dx * dx + dy * dy);
+		if (length <= 1) return;
+		var line = document.createElement('div');
+		line.className = 'fx-tracer' + (unit.cls === '炮' ? ' fx-tracer--artillery' : '');
+		line.style.left = x0.toFixed(1) + 'px';
+		line.style.top = y0.toFixed(1) + 'px';
+		line.style.width = length.toFixed(1) + 'px';
+		line.style.transform = 'rotate(' + Math.atan2(dy, dx) + 'rad)';
+		box.appendChild(line);
+		track(line, TRACER_MS + 180);
+
+		var impact = document.createElement('div');
+		impact.className = 'fx-impact';
+		impact.style.left = x1.toFixed(1) + 'px';
+		impact.style.top = y1.toFixed(1) + 'px';
+		box.appendChild(impact);
+		track(impact, IMPACT_MS + 180);
+	}
+
+	function animateUnit(unit, className, ms) {
+		var piece = unit && unit.id ? document.getElementById(unit.id) : null;
+		if (!piece) return;
+		piece.classList.remove(className);
+		void piece.offsetWidth;
+		piece.classList.add(className);
+		window.setTimeout(function () { if (piece) piece.classList.remove(className); }, ms);
+	}
+
 	/* ---- 移动：沿路径铺一条尘迹（尾→头错开出现） ---- */
 	function trail(unit, rec) {
 		var box = trailLayer();
@@ -183,12 +224,12 @@
 		fired.push({ unit: unit, target: target || null });
 	}
 
-	function markMoving(unit) {
+	function markMoving(unit, x0, y0) {
 		if (!unit) return;
 		for (var i = 0; i < moved.length; i++) {
 			if (moved[i].unit === unit) return;   // 只记本回合第一次出现的位置作为路径起点
 		}
-		moved.push({ unit: unit, x0: unit.posx, y0: unit.posy });
+		moved.push({ unit: unit, x0: Number(x0), y0: Number(y0) });
 	}
 
 	/* ---- 对外：回合结束统一生成 ---- */
@@ -198,6 +239,8 @@
 		fired.length = 0;
 		moved.length = 0;
 		if (!fireList.length && !moveList.length) return;
+		moveList.forEach(function (rec) { if (rec.unit && !rec.unit.disabled) animateUnit(rec.unit, 'is-marching', 680); });
+		fireList.forEach(function (rec) { if (rec.unit && !rec.unit.disabled) animateUnit(rec.unit, 'is-firing', 420); });
 		window.setTimeout(function () {
 			if (!fxOn()) return;
 			moveList.forEach(function (rec) {
@@ -207,6 +250,7 @@
 			fireList.forEach(function (rec) {
 				if (!rec.unit || rec.unit.disabled) return;
 				flash(rec.unit, rec.target);
+				tracer(rec.unit, rec.target);
 				burst(rec.unit);
 			});
 		}, SPAWN_DELAY);

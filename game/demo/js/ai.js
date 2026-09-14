@@ -25,7 +25,8 @@ function aiAliveBlues() { return armys.filter(u => u.color === 'blue' && !u.disa
 
 /* "交战状态"：射程内有活着的、可命中的蓝方（红方当前会优先开火） */
 function aiIsEngaged(red) {
-	return armys.some(b => b.color === 'blue' && !b.disabled && aiDist(red, b) < red.atkrange);
+	const range = (typeof unitCombatRange === 'function') ? unitCombatRange(red) : red.atkrange;
+	return armys.some(b => b.color === 'blue' && !b.disabled && aiDist(red, b) < range);
 }
 
 /* "威胁最大"的蓝方选择：nearest=距离最近 / strongest=攻击最高 / weakest=生命最低；并列时取更近者。

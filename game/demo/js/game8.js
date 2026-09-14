@@ -1032,6 +1032,14 @@ function game8DeployArtillery(
     });
 
 
+    if (typeof updateUnitHealth === 'function') {
+
+        updateUnitHealth(
+            armys[armys.length - 1]
+        );
+    }
+
+
     movePieceTo(
         piece.id,
         x,
