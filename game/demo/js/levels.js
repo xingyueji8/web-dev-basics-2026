@@ -18,7 +18,8 @@
 
 var LEVELS_ORDER = [
 	{
-		id: 1, file: 'game1.html', name: '第 1 关 · 破晓防线', ai: null,
+		id: 1, file: 'game1.html', name: '第 1 关 · 破晓防线', ai: null, difficulty: 1,
+		mechanic: { 'zh-CN': '基础指挥 · 集中兵力逐个击破', 'zh-TW': '基礎指揮 · 集中兵力逐個擊破', en: 'Basic Command · Concentrate and defeat in detail' },
 		chapter: '第一幕 · 鹰旗初升', location: '土伦港 · 1793', scene: 'dawn',
 		map: { lon: 5.93, lat: 43.12 },   /* 地图旗标：土伦港（经纬度；投影见 img/europe-map.svg 与 menu-saves.js 的 MAP） */
 		hint: '失去指挥的敌军不会进行机动与增援，形成局部优势逐一歼灭。消灭所有敌军，取得战役胜利！',
@@ -29,7 +30,8 @@ var LEVELS_ORDER = [
 		]
 	},
 	{
-		id: 2, file: 'game2.html', name: '第 2 关 · 炮火走廊', ai: null,
+		id: 2, file: 'game2.html', name: '第 2 关 · 炮火走廊', ai: null, difficulty: 2,
+		mechanic: { 'zh-CN': '兵种协同 · 步兵掩护远程炮火', 'zh-TW': '兵種協同 · 步兵掩護遠程砲火', en: 'Combined Arms · Screen long-range artillery with infantry' },
 		chapter: '第二幕 · 雷霆之声', location: '土伦港 · 1793', scene: 'battery',
 		map: { lon: 1.44, lat: 43.60 },   /* 剧情同为土伦，但地图上手动西移约 4.5°（D-2：否则与第 1 关旗标重叠） */
 		hint: '敌军有固定火炮，注意谨慎进入其射程。',
@@ -40,12 +42,14 @@ var LEVELS_ORDER = [
 		]
 	},
 	{
-		id: 3, file: 'game3.html', name: '第 3 关 · 雪原突骑', ai: { strategy: 'breakthrough' },
+		id: 3, file: 'game3.html', name: '第 3 关 · 雪原突骑',
+		ai: { strategy: 'breakthrough', openingDelay: 2, cavalryPriority: false }, difficulty: 3,
+		mechanic: { 'zh-CN': '主动突击 · 前 2 步整队，第 3 步迎敌', 'zh-TW': '主動突擊 · 前 2 步整隊，第 3 步迎敵', en: 'Active Assault · Form up for two turns before contact' },
 		chapter: '第三幕 · 风雪疾驰', location: '耶拿 · 1806', scene: 'snow',
 		map: { lon: 11.59, lat: 50.93 },   /* 地图旗标：耶拿 */
-		hint: '敌军每回合都会扑向离自己最近的单位，注意保持阵型。',
+		hint: '敌军会先整队两步，再扑向离自己最近的单位。用步兵护住炮兵，骑兵与散兵从两翼夹击；本关红方骑兵是轻骑，不会强制追击炮兵。',
 		story: [
-			{ who: '萨瓦里', role: '副官', side: 'right', portrait: 'img/portraits/adjutant.webp', text: '普鲁士人已经按耐不住向我们发动冲击了，他们的攻击目标应该是威胁最大的骑兵和炮兵。' },
+			{ who: '萨瓦里', role: '副官', side: 'right', portrait: 'img/portraits/adjutant.webp', text: '普鲁士人正在风雪里重新整队。侦察兵判断，我们大概只有两轮命令的时间建立防线。' },
 			{ who: '拿破仑', role: '法兰西皇帝', side: 'left', portrait: 'img/portraits/napoleon.webp', text: '内伊的部队冲的太快，和主力的线列步兵脱节，他怎么没向我提前请示！？' },
 			{ who: '拿破仑', role: '法兰西皇帝', side: 'left', portrait: 'img/portraits/napoleon.webp', text: '应该还来得及，传令让周围的部队快速汇合集结！' }
 		]
@@ -54,7 +58,8 @@ var LEVELS_ORDER = [
 		/* 玩法取自 A：红方 flee 撤往右上角，到达边界即"成功撤退"（game4.js 的
 		 * objective.type='retreat'）；逃脱 ≥3 判负。B 的剧情描述的是抱团方阵，
 		 * 与这套玩法不符，故按 A 的设计重写。 */
-		id: 4, file: 'game4.html', name: '第 4 关 · 耶拿逐猎', ai: { strategy: 'flee', fleeTo: { x: 9.5, y: -0.5 } },
+		id: 4, file: 'game4.html', name: '第 4 关 · 耶拿逐猎', ai: { strategy: 'flee', fleeTo: { x: 9.5, y: -0.5 } }, difficulty: 4,
+		mechanic: { 'zh-CN': '追击封锁 · 抢占退路，最多放走 2 支', 'zh-TW': '追擊封鎖 · 搶佔退路，最多放走 2 支', en: 'Pursuit · Seal the escape route; at most two may pass' },
 		chapter: '第四幕 · 穷途逐北', location: '奥尔施塔特 · 1806', scene: 'river',
 		map: { lon: 13.40, lat: 52.52 },   /* 奥尔施塔特离耶拿仅 20km，地图上手动东北移向柏林（D-2：否则与第 3 关重叠） */
 		hint: '敌军要逃往右上角——只有到达右上角才算出界撤退。利用骑兵抢先绕前堵截，别让敌人得逞。',
@@ -71,7 +76,8 @@ var LEVELS_ORDER = [
 		 * 红方 8 人站桩固守右侧高地（ai:null），时限 18 回合。
 		 * 星级由 main.js 的 checkWinState() 里 CURRENT_LEVEL_ID === 5 分支计算：
 		 * 按通关所用步数 ≤13=3星 / ≤15=2星 / ≤18=1星。 */
-		id: 5, file: 'game5.html', name: '第 5 关 · 艰难攻坚', ai: null,
+		id: 5, file: 'game5.html', name: '第 5 关 · 艰难攻坚', ai: null, difficulty: 5,
+		mechanic: { 'zh-CN': '限时攻坚 · 18 步内突破纵深防线', 'zh-TW': '限時攻堅 · 18 步內突破縱深防線', en: 'Timed Siege · Break the layered defense within 18 turns' },
 		chapter: '第五幕 · 漫长东征', location: '斯摩棱斯克以西 · 1812', scene: 'embers',
 		map: { lon: 31.00, lat: 54.60 },   /* 地图旗标：斯摩棱斯克以西（全图最东） */
 		hint: '这是一场攻坚战——敌守军占据城市、原地固守。同时对城市进行破坏，力求速战速决。要快速全歼守军，就必须顶着火力压上去集火。',
@@ -85,7 +91,8 @@ var LEVELS_ORDER = [
 	{
 		/* 2026-09：本关"战斗 + 叙事"整体取自原第 5 关，与第 5 关对调（D-1：叙事随战斗走）。
 		 * 敌方专挑攻击力最高的蓝方集火（breakthrough + threat:strongest）。 */
-		id: 6, file: 'game6.html', name: '第 6 关 · 铁血强攻', ai: { strategy: 'breakthrough', threat: 'strongest' },
+		id: 6, file: 'game6.html', name: '第 6 关 · 铁血强攻', ai: { strategy: 'breakthrough', threat: 'strongest' }, difficulty: 6,
+		mechanic: { 'zh-CN': '精准集火 · 敌军优先猎杀我方核心火力', 'zh-TW': '精準集火 · 敵軍優先獵殺我方核心火力', en: 'Focused Assault · The enemy hunts your strongest units' },
 		chapter: '第六幕 · 雨云之下', location: '滑铁卢附近 · 1816', scene: 'storm',
 		map: { lon: 4.40, lat: 50.72 },   /* 地图旗标：滑铁卢 */
 		hint: '敌军会优先集火攻击你的炮兵和骑兵，用掷弹兵和步兵掩护他们。',
@@ -106,7 +113,8 @@ var HIDDEN_LEVEL = {
 	id: 7,
 	file: 'game7.html',
 	name: '第 7 关 · 帝国黄昏（隐藏）',
-	ai: { strategy: 'cluster', core: 0 },
+	ai: { strategy: 'cluster', core: 0 }, difficulty: 7,
+	mechanic: { 'zh-CN': '终局方阵 · 先撕开近卫核心', 'zh-TW': '終局方陣 · 先撕開近衛核心', en: 'Final Square · Break the Guard core first' },
 	chapter: '终幕 · 未写之史', location: '另一条时间线 · 1815', scene: 'twilight',
 	map: { lon: 2.35, lat: 48.85 },   /* 隐藏关无真实地点，象征性落在巴黎（帝国的中心） */
 	hint: '你踏进了被历史抹去的一页……情报：帝国的旧卫队仍然抱成一团，只有撕开他们的核心，才能改写终局。',

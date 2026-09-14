@@ -50,6 +50,20 @@ function playDialogue(lines, onDone) {
 
 	const box = document.createElement('div');
 	box.className = 'dialog-box';
+	const crest = document.createElement('div');
+	crest.className = 'dialog-crest';
+	crest.setAttribute('aria-hidden', 'true');
+	const crestMonogram = document.createElement('strong');
+	crestMonogram.className = 'dialog-crest__monogram';
+	crestMonogram.textContent = 'N';
+	const crestLabel = document.createElement('span');
+	crestLabel.className = 'dialog-crest__label';
+	crestLabel.textContent = 'GRANDE ARMÉE';
+	crest.appendChild(crestMonogram);
+	crest.appendChild(crestLabel);
+
+	const paper = document.createElement('div');
+	paper.className = 'dialog-paper';
 
 	const heading = document.createElement('div');
 	heading.className = 'dialog-heading';
@@ -74,8 +88,10 @@ function playDialogue(lines, onDone) {
 	next.className = 'game-btn dialog-next';
 	next.textContent = '继续';
 
-	box.appendChild(heading);
-	box.appendChild(text);
+	paper.appendChild(heading);
+	paper.appendChild(text);
+	box.appendChild(crest);
+	box.appendChild(paper);
 	box.appendChild(next);
 	overlay.appendChild(chapter);
 	overlay.appendChild(box);
@@ -92,6 +108,14 @@ function playDialogue(lines, onDone) {
 	});
 
 	let i = 0;
+	function inferPortraitAction(line, index) {
+		if (line.action) return line.action;
+		const identity = String(line.who || '') + ' ' + String(line.role || '');
+		if (/传令|副官|通讯|上士|report|courier|aide/i.test(identity)) return 'report';
+		if (/联军|coalition|防线/i.test(identity)) return 'challenge';
+		return index % 2 === 0 ? 'command' : 'resolve';
+	}
+
 	function show(j) {
 		const line = lines[j] || {};
 		const side = line.side === 'right' ? 'right' : 'left';
@@ -104,21 +128,27 @@ function playDialogue(lines, onDone) {
 			portraits[side].holder.classList.remove('is-empty');
 		}
 
+		const action = inferPortraitAction(line, j);
 		['left', 'right'].forEach(function (position) {
 			const holder = portraits[position].holder;
 			const speaking = !isBriefing && position === side;
 			holder.classList.toggle('is-speaking', speaking);
 			holder.classList.toggle('is-listening', isBriefing || position !== side);
-			holder.classList.remove('is-gesturing');
+			holder.classList.remove('is-gesturing', 'is-reacting', 'is-action-command', 'is-action-report', 'is-action-challenge', 'is-action-resolve');
 			if (speaking) {
-				/* 重启这一句的立绘动作；只动表现层，不改变人物图和剧情数据。 */
+				/* 每句按身份切换动作：下令 / 汇报 / 对峙 / 沉思，避免所有人物统一弹一下。 */
 				void holder.offsetWidth;
-				holder.classList.add('is-gesturing');
+				holder.classList.add('is-gesturing', 'is-action-' + action);
+			} else if (!holder.classList.contains('is-empty')) {
+				void holder.offsetWidth;
+				holder.classList.add('is-reacting');
 			}
 		});
 
 		overlay.dataset.scene = line.scene || 'campaign';
 		box.classList.toggle('dialog-box--briefing', isBriefing);
+		crest.classList.toggle('dialog-crest--briefing', isBriefing);
+		crestMonogram.textContent = isBriefing ? '✦' : 'N';
 		chapterName.textContent = localize(line.chapter) || translate('dialogue.campaign', '帝国战记');
 		chapterLocation.textContent = localize(line.location);
 		who.textContent = localize(line.who);

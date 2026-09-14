@@ -31,10 +31,10 @@ function aiIsEngaged(red) {
 
 /* "威胁最大"的蓝方选择：nearest=距离最近 / strongest=攻击最高 / weakest=生命最低；并列时取更近者。
  * 特殊规则（to-do #14 后补充）：敌方骑兵优先把炮兵当目标——若场上还有存活炮兵，先在炮兵里选。 */
-function pickThreatBlue(red, blues, metric) {
+function pickThreatBlue(red, blues, metric, options) {
 	if (!blues.length) return null;
 	let pool = blues;
-	if (red && red.cls === '骑') {
+	if (red && red.cls === '骑' && (!options || options.cavalryPriority !== false)) {
 		const guns = blues.filter(b => b.cls === '炮');
 		if (guns.length) pool = guns;
 	}
@@ -64,6 +64,14 @@ function applyEnemyAI() {
 
 	let reds = aiAliveReds();
 	if (!reds.length) return;
+
+	/* 可选的开场整队窗口：用已消耗回合数判断，读档后也能自然续上。
+	 * 第三关用 2 步缓冲，把“站桩教学 → 主动 AI”的难度台阶变平滑。 */
+	const elapsedTurns = Math.max(0, (Number(CURRENT_GAME.turns_limit) || 0) - (Number(remain_turns) || 0));
+	if (Number(ai.openingDelay) > elapsedTurns) {
+		reds.forEach(r => { r.targetx = r.posx; r.targety = r.posy; });
+		return;
+	}
 
 	// 已交战（射程内有蓝方）的红方：原地固守不移动；其余红方照常执行策略
 	const engagedReds = reds.filter(r => aiIsEngaged(r));
@@ -116,7 +124,7 @@ function applyEnemyAI() {
 	if (!blues.length) return;
 	const metric = ai.threat || 'nearest';
 	reds.forEach(r => {
-		const t = pickThreatBlue(r, blues, metric);
+		const t = pickThreatBlue(r, blues, metric, ai);
 		if (t) { r.targetx = t.posx; r.targety = t.posy; }
 	});
 }

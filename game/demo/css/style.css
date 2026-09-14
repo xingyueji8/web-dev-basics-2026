@@ -3926,3 +3926,340 @@ body.game8 .chess { overflow: visible; }
 	.level-intro-image-box.is-loading::before,
 	html.theme-switching .ui-theme { animation: none !important; }
 }
+
+/* ========================================================================== */
+/* 2026-09-14 玩法曲线与剧情军令台：战况条 / 声音键 / 时代化对话结构 */
+/* ========================================================================== */
+
+/* 战况条固定在左上角，不占棋盘纵向空间；悬停可看本关专属机制。 */
+.battle-status {
+	position: fixed;
+	z-index: 82;
+	top: 12px;
+	left: 12px;
+	display: flex;
+	align-items: center;
+	gap: 0;
+	min-height: 38px;
+	padding: 5px 8px;
+	border: 1px solid rgba(214, 187, 116, 0.42);
+	border-radius: 14px;
+	color: #e9dfc9;
+	background: linear-gradient(145deg, rgba(22, 50, 76, 0.93), rgba(7, 20, 34, 0.96));
+	box-shadow: 0 10px 26px rgba(0, 0, 0, 0.28), inset 0 1px rgba(255, 255, 255, 0.12);
+	backdrop-filter: blur(16px) saturate(1.15);
+	transition: opacity 0.45s ease, transform 0.45s ease;
+}
+
+.battle-status__item {
+	padding: 0.18rem 0.62rem;
+	font-size: 0.66rem;
+	font-weight: 700;
+	letter-spacing: 0.055em;
+	white-space: nowrap;
+}
+
+.battle-status__item + .battle-status__item { border-left: 1px solid rgba(214, 187, 116, 0.27); }
+.battle-status__item.is-active {
+	color: #ffe08a;
+	text-shadow: 0 0 13px rgba(255, 199, 73, 0.42);
+}
+.game-page.level-opening .battle-status { opacity: 0; transform: translateY(-10px); pointer-events: none; }
+
+/* 右上角声音控制与语言/昼夜按钮组成同一工具组。 */
+.ui-sound {
+	display: grid;
+	width: 42px;
+	min-height: 34px;
+	padding: 0;
+	place-items: center;
+	border: 1px solid rgba(218, 196, 136, 0.45);
+	border-radius: 999px;
+	color: #f4df9e;
+	background: linear-gradient(145deg, #244d73, #0b2137);
+	box-shadow: inset 0 0 0 1px rgba(255,255,255,0.1), 0 4px 12px rgba(0,0,0,0.28);
+	cursor: pointer;
+	transition: scale 0.18s ease, filter 0.18s ease, background 0.35s ease;
+}
+
+.ui-sound:hover { filter: brightness(1.16); }
+.ui-sound:active { scale: 0.9; }
+.ui-sound svg {
+	width: 19px;
+	height: 19px;
+	fill: currentColor;
+	stroke: currentColor;
+	stroke-width: 1.8;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+}
+.ui-sound .sound-wave,
+.ui-sound .sound-slash { fill: none; }
+html[data-theme='light'] .ui-sound { color: #ffe4a0; background: linear-gradient(145deg, #315f8c, #112b49); }
+html[data-theme='dark'] .ui-sound[aria-pressed='true'] { color: #9ca9b6; background: linear-gradient(145deg, #263543, #101a25); }
+
+/* 对话不再是一块“加粗边框的玻璃条”，而是军令台 + 蜡封 + 羊皮军报三层结构。 */
+.dialog-overlay .dialog-box {
+	left: 0;
+	right: 0;
+	display: grid;
+	width: 100vw;
+	max-width: none;
+	box-sizing: border-box;
+	grid-template-columns: 96px minmax(420px, 900px) 138px;
+	align-items: stretch;
+	justify-content: center;
+	gap: 16px;
+	min-height: clamp(205px, 29svh, 286px);
+	padding: clamp(1rem, 2.1vh, 1.4rem) max(18px, calc((100vw - 1210px) / 2));
+	border: 0;
+	border-top: 5px solid #b99145;
+	border-radius: 0;
+	color: #211b13;
+	background:
+		linear-gradient(90deg, rgba(255,255,255,0.035), transparent 18%, transparent 82%, rgba(255,255,255,0.025)),
+		repeating-linear-gradient(4deg, rgba(255,255,255,0.018) 0 1px, transparent 1px 10px),
+		linear-gradient(180deg, rgba(19, 37, 54, 0.98), rgba(6, 16, 26, 0.995));
+	box-shadow: 0 -24px 80px rgba(0,0,0,0.72), inset 0 16px 30px rgba(255,255,255,0.035);
+	backdrop-filter: blur(22px) saturate(1.16);
+	transform: none;
+	overflow: visible;
+}
+
+.dialog-overlay .dialog-box::before {
+	content: '';
+	position: absolute;
+	top: -10px;
+	left: 0;
+	width: 100%;
+	height: 6px;
+	transform: none;
+	background: linear-gradient(90deg, transparent, #6e4c20 8%, #efcf7d 50%, #6e4c20 92%, transparent);
+	box-shadow: 0 0 20px rgba(222, 181, 87, 0.38);
+}
+.dialog-overlay .dialog-box::after { content: none; }
+
+.dialog-crest {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	align-self: center;
+	width: 90px;
+	height: 90px;
+	border: 3px double rgba(255, 209, 116, 0.76);
+	border-radius: 50%;
+	color: #ffe1a0;
+	background:
+		radial-gradient(circle at 35% 30%, rgba(255,255,255,0.2), transparent 18%),
+		radial-gradient(circle, #a92e2c, #6d1519 70%);
+	box-shadow: 0 9px 23px rgba(0,0,0,0.42), inset 0 0 0 5px rgba(69, 8, 12, 0.3), inset 0 0 22px rgba(255,194,91,0.18);
+	transform: rotate(-3deg);
+}
+
+.dialog-crest::before,
+.dialog-crest::after {
+	content: '';
+	position: absolute;
+	bottom: -27px;
+	width: 25px;
+	height: 42px;
+	background: linear-gradient(#8f2424, #571014);
+	clip-path: polygon(0 0, 100% 0, 82% 100%, 50% 77%, 18% 100%);
+	z-index: -1;
+}
+.dialog-crest::before { left: 19px; transform: rotate(7deg); }
+.dialog-crest::after { right: 19px; transform: rotate(-7deg); }
+.dialog-crest__monogram {
+	font-family: Georgia, 'Times New Roman', serif;
+	font-size: 2.65rem;
+	font-style: italic;
+	line-height: 0.9;
+	text-shadow: 0 2px 0 #4d0d13, 0 0 12px rgba(255,223,148,0.28);
+}
+.dialog-crest__label {
+	margin-top: 0.25rem;
+	font-size: 0.41rem;
+	font-weight: 800;
+	letter-spacing: 0.12em;
+}
+.dialog-crest--briefing { background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.18), transparent 18%), radial-gradient(circle, #315f87, #112d4b 72%); }
+
+.dialog-paper {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	min-width: 0;
+	padding: clamp(1rem, 2vh, 1.35rem) clamp(1.15rem, 2.4vw, 2rem);
+	clip-path: polygon(0.8% 4%, 4% 1%, 28% 2.5%, 53% 0, 78% 2.4%, 96% 1%, 99.2% 5%, 98.6% 48%, 100% 95%, 96% 99%, 74% 97.4%, 50% 100%, 24% 97.6%, 3% 99%, 0.6% 94%, 1.4% 52%);
+	background:
+		linear-gradient(90deg, rgba(82,55,25,0.13) 1px, transparent 1px) 0 0 / 54px 54px,
+		linear-gradient(rgba(82,55,25,0.11) 1px, transparent 1px) 0 0 / 54px 54px,
+		radial-gradient(circle at 18% 22%, rgba(255,255,255,0.5), transparent 28%),
+		linear-gradient(102deg, #d7bd87, #f1dfb4 43%, #d2b57c);
+	box-shadow: 0 14px 28px rgba(0,0,0,0.36);
+}
+.dialog-paper::before {
+	content: 'ORDRE DU JOUR · QUARTIER GÉNÉRAL';
+	position: absolute;
+	top: 9px;
+	right: 18px;
+	font-family: Georgia, serif;
+	font-size: 0.43rem;
+	font-weight: 700;
+	letter-spacing: 0.17em;
+	color: rgba(83, 54, 28, 0.48);
+}
+.dialog-paper::after {
+	content: '';
+	position: absolute;
+	inset: 8px;
+	pointer-events: none;
+	border: 1px solid rgba(91, 57, 22, 0.2);
+	clip-path: inherit;
+}
+
+.dialog-overlay .dialog-paper .dialog-heading,
+.dialog-overlay .dialog-paper .dialog-text {
+	width: auto;
+	max-width: none;
+	margin-right: 0;
+	margin-left: 0;
+}
+.dialog-overlay .dialog-paper .dialog-heading {
+	align-items: center;
+	margin: 0 0 0.65rem;
+	padding: 0 0 0.58rem;
+	border-bottom: 1px solid rgba(78, 48, 20, 0.35);
+}
+.dialog-overlay .dialog-paper .dialog-identity {
+	padding: 0.32rem 0.65rem 0.34rem;
+	border-left: 4px solid #a6312d;
+	background: linear-gradient(90deg, rgba(111, 28, 26, 0.12), transparent);
+}
+.dialog-overlay .dialog-paper .dialog-who {
+	color: #6b171b;
+	font-family: Georgia, 'Noto Serif SC', 'Songti SC', serif;
+	font-size: clamp(1.06rem, 1.8vw, 1.36rem);
+	text-shadow: none;
+}
+.dialog-overlay .dialog-paper .dialog-role,
+.dialog-overlay .dialog-paper .dialog-progress { color: #705b39; }
+.dialog-overlay .dialog-paper .dialog-text {
+	min-height: 3.5em;
+	padding: 0;
+	white-space: pre-line;
+	color: #282015;
+	font-family: 'Noto Serif SC', 'Songti SC', SimSun, serif;
+	font-size: clamp(0.94rem, 1.45vw, 1.08rem);
+	font-weight: 560;
+	line-height: 1.78;
+	text-shadow: none;
+}
+
+.dialog-overlay .dialog-next {
+	position: relative;
+	right: auto;
+	bottom: auto;
+	align-self: end;
+	min-width: 132px;
+	margin: 0 0 0.15rem;
+	border: 1px solid #d2ad5e;
+	color: #ffe8ad;
+	background: linear-gradient(180deg, #315f89, #112b48);
+	box-shadow: 0 11px 24px rgba(0,0,0,0.38), inset 0 1px rgba(255,255,255,0.18);
+}
+
+/* 每类发言动作时长 1.35~1.8 秒，之后进入缓慢呼吸；避免“快速跑动式”抽动。 */
+.dialog-overlay .dialog-portrait.is-speaking.is-action-command img {
+	animation: portraitOrderCommand 1.55s cubic-bezier(.18,.72,.22,1) both, portraitSpeakerIdle 4.8s 1.55s ease-in-out infinite;
+}
+.dialog-overlay .dialog-portrait.is-speaking.is-action-report img {
+	animation: portraitReportNod 1.45s cubic-bezier(.2,.7,.24,1) both, portraitSpeakerIdle 4.8s 1.45s ease-in-out infinite;
+}
+.dialog-overlay .dialog-portrait.is-speaking.is-action-challenge img {
+	animation: portraitChallengeLean 1.7s cubic-bezier(.2,.74,.2,1) both, portraitSpeakerIdle 4.8s 1.7s ease-in-out infinite;
+}
+.dialog-overlay .dialog-portrait.is-speaking.is-action-resolve img {
+	animation: portraitResolveTurn 1.8s cubic-bezier(.2,.72,.22,1) both, portraitSpeakerIdle 4.8s 1.8s ease-in-out infinite;
+}
+.dialog-overlay .dialog-portrait.is-listening.is-reacting img {
+	animation: portraitAcknowledge 1.5s ease both, portraitListeningBreath 5.4s 1.5s ease-in-out infinite;
+}
+
+@keyframes portraitOrderCommand {
+	0% { transform: translate3d(-14px, 10px, 0) scale(.985) rotate(-1deg); }
+	42% { transform: translate3d(7px, -8px, 0) scale(1.022) rotate(.45deg); }
+	72% { transform: translate3d(-2px, -3px, 0) scale(1.008) rotate(-.12deg); }
+	100% { transform: translate3d(0, 0, 0) scale(1); }
+}
+@keyframes portraitReportNod {
+	0% { transform: translate3d(12px, 8px, 0) scale(.985) rotate(.8deg); }
+	38% { transform: translate3d(-3px, -5px, 0) scale(1.012) rotate(-.3deg); }
+	63% { transform: translate3d(0, 3px, 0) scale(1.004) rotate(.12deg); }
+	100% { transform: translate3d(0, 0, 0) scale(1); }
+}
+@keyframes portraitChallengeLean {
+	0% { transform: translate3d(16px, 8px, 0) scale(.98) rotate(1.2deg); filter: brightness(.78); }
+	48% { transform: translate3d(-7px, -7px, 0) scale(1.025) rotate(-.45deg); filter: brightness(1.08); }
+	100% { transform: translate3d(0, 0, 0) scale(1); filter: brightness(1); }
+}
+@keyframes portraitResolveTurn {
+	0% { transform: translate3d(-7px, 5px, 0) scale(.99) rotate(-.5deg); }
+	50% { transform: translate3d(3px, -5px, 0) scale(1.014) rotate(.22deg); }
+	100% { transform: translate3d(0, 0, 0) scale(1); }
+}
+@keyframes portraitAcknowledge {
+	0%, 100% { transform: translateY(0) scale(1); }
+	44% { transform: translateY(5px) scale(.996); }
+	70% { transform: translateY(1px) scale(1.002); }
+}
+@keyframes portraitSpeakerIdle {
+	0%, 100% { transform: translateY(0) scale(1); }
+	50% { transform: translateY(-3px) scale(1.003); }
+}
+
+@media (max-width: 760px) {
+	.battle-status { top: 52px; left: 6px; max-width: calc(100vw - 12px); min-height: 32px; padding: 3px 5px; }
+	.battle-status__item { padding: 0.12rem 0.34rem; font-size: 0.53rem; letter-spacing: 0.02em; }
+	.ui-sound { width: 36px; min-height: 34px; }
+	.dialog-overlay .dialog-box {
+		grid-template-columns: minmax(0, 1fr);
+		gap: 0;
+		min-height: 218px;
+		padding: 14px 10px 62px;
+	}
+	.dialog-crest {
+		position: absolute;
+		top: -39px;
+		left: 15px;
+		width: 66px;
+		height: 66px;
+		z-index: 3;
+	}
+	.dialog-crest__monogram { font-size: 1.8rem; }
+	.dialog-crest__label { font-size: 0.3rem; }
+	.dialog-crest::before,
+	.dialog-crest::after { bottom: -19px; width: 17px; height: 29px; }
+	.dialog-crest::before { left: 14px; }
+	.dialog-crest::after { right: 14px; }
+	.dialog-paper { padding: 1.05rem 1rem 0.9rem; }
+	.dialog-paper::before { top: 7px; right: 13px; font-size: 0.34rem; }
+	.dialog-overlay .dialog-paper .dialog-heading { margin-bottom: 0.4rem; padding-bottom: 0.38rem; }
+	.dialog-overlay .dialog-paper .dialog-text { min-height: 0; font-size: 0.9rem; line-height: 1.58; }
+	.dialog-overlay .dialog-next { position: absolute; right: 12px; bottom: 10px; min-width: 118px; }
+	.dialog-portrait { bottom: 218px; }
+}
+
+@media (max-height: 680px) and (min-width: 761px) {
+	.dialog-overlay .dialog-box { min-height: 178px; grid-template-columns: 76px minmax(360px, 820px) 124px; padding-top: 0.7rem; padding-bottom: 0.7rem; }
+	.dialog-crest { width: 70px; height: 70px; }
+	.dialog-crest__monogram { font-size: 2rem; }
+	.dialog-overlay .dialog-paper .dialog-text { min-height: 2.7em; line-height: 1.5; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.dialog-overlay .dialog-portrait img { animation: none !important; }
+}

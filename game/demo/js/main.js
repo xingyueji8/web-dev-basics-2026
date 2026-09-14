@@ -7,8 +7,10 @@ let footerMode = 'goal';
 let resumedLevel = null;
 const UNIT_MIN_SEPARATION = 0.56;
 const MAX_UNDO_USES = 3;
+const MAX_BATTLE_MOMENTUM = 3;
 let undoStack = [];
 let undoUses = 0;
+let battleMomentum = 0;
 
 let boardContainer = document.getElementById('board'); // 维护 board 的容器, 以备后续使用
 let buttonContainer = document.getElementById('button'); // 维护 button 的容器, 以备后续使用
@@ -19,6 +21,64 @@ function gameText(key, vars, fallback) {
 
 function gameContent(value) {
 	return (typeof uiLocalize === 'function') ? uiLocalize(value) : (value || '');
+}
+
+/* 连续歼敌会累积“战意”：每级令蓝方下一步攻击提高 8%，最高 3 级。
+ * 它让集中火力真正有奖励，但上限只有 24%，不会把后期关卡滚成无脑碾压。 */
+function battleAttackPower(unit) {
+	const base = Math.max(0, Number(unit && unit.atk) || 0);
+	return unit && unit.color === 'blue' ? base * (1 + battleMomentum * 0.08) : base;
+}
+
+function aliveUnitCount(color) {
+	return armys.filter(function (unit) { return unit.color === color && !unit.disabled; }).length;
+}
+
+function renderBattleStatus() {
+	let strip = document.getElementById('battle-status');
+	const heading = document.querySelector('.game-heading');
+	const meta = (typeof getLevelById === 'function' && typeof CURRENT_LEVEL_ID !== 'undefined')
+		? getLevelById(CURRENT_LEVEL_ID)
+		: null;
+	if (!heading || !meta) {
+		if (strip) strip.style.display = 'none';
+		return;
+	}
+	if (!strip) {
+		strip = document.createElement('div');
+		strip.id = 'battle-status';
+		strip.className = 'battle-status';
+		strip.setAttribute('aria-live', 'polite');
+		heading.appendChild(strip);
+	}
+	strip.style.removeProperty('display');
+	strip.innerHTML = '';
+	const items = [
+		gameText('game.difficulty', { level: Math.max(1, Math.min(7, Number(meta.difficulty) || 1)) }, '威胁 ' + (meta.difficulty || 1) + '/7'),
+		gameText('game.enemyRemain', { count: aliveUnitCount('red') }, '敌军 ' + aliveUnitCount('red')),
+		gameText('game.momentum', { level: battleMomentum, bonus: battleMomentum * 8 }, '战意 ' + battleMomentum + '/3 · +' + (battleMomentum * 8) + '%')
+	];
+	items.forEach(function (label, index) {
+		const item = document.createElement('span');
+		item.className = 'battle-status__item' + (index === 2 && battleMomentum ? ' is-active' : '');
+		item.textContent = label;
+		strip.appendChild(item);
+	});
+	strip.title = gameContent(meta.mechanic || meta.hint || '');
+}
+
+function updateBattleMomentum(defeatedThisTurn) {
+	const before = battleMomentum;
+	if (defeatedThisTurn > 0) battleMomentum = Math.min(MAX_BATTLE_MOMENTUM, battleMomentum + defeatedThisTurn);
+	else battleMomentum = Math.max(0, battleMomentum - 1);
+	if (defeatedThisTurn > 0 && typeof toast === 'function') {
+		toast(gameText('game.momentumGain', {
+			kills: defeatedThisTurn,
+			level: battleMomentum,
+			bonus: battleMomentum * 8
+		}, '歼敌 ' + defeatedThisTurn + ' 支，战意升至 ' + battleMomentum + '/3：下步攻击 +' + (battleMomentum * 8) + '%。'));
+	}
+	if (before !== battleMomentum || defeatedThisTurn > 0) renderBattleStatus();
 }
 
 /* 统一重画回合提示，语言切换时不刷新战局。 */
@@ -121,6 +181,7 @@ function boardContentRect() {
 // 加载游戏
 function loadGame(game) {
 	resetUndoHistory();
+	battleMomentum = 0;
 	document.body.classList.add('level-opening');   // 从 demo-美化好 移植：开场隐藏战场，等 revealBattlefield() 淡入
 	n = game.n; m = game.m; remain_turns = game.turns_limit;
 	boardContainer.style.gridTemplateColumns = `repeat(${m}, 1fr)`;
@@ -168,12 +229,14 @@ function loadGame(game) {
 	}) ;
 	/* 加载棋子 */
 	renderOrderArrows();
+	renderBattleStatus();
 	showLevelIntro();
 }
 
 /* 从存档快照恢复一局（to-do #2/#3）：重建棋盘与棋子，字段与 captureSnapshot() 一一对应 */
 function loadSnapshot(snap) {
 	resetUndoHistory();
+	battleMomentum = Math.max(0, Math.min(MAX_BATTLE_MOMENTUM, Number(snap.momentum) || 0));
 	n = snap.n; m = snap.m; remain_turns = snap.remain_turns; piece_cnt = 0; armys = new Array(0);
 	selectedPieces = [];
 	selectedEnemies = [];
@@ -222,6 +285,7 @@ function loadSnapshot(snap) {
 	refreshSelectedUI();
 	refreshEnemySelectionUI();
 	renderOrderArrows();
+	renderBattleStatus();
 	showLevelIntro();
 }
 
@@ -232,6 +296,7 @@ function captureSnapshot() {
 		level: CURRENT_LEVEL_ID,
 		n: n, m: m,
 		remain_turns: remain_turns,
+		momentum: battleMomentum,
 		units: armys.map(u => ({
 			color: u.color, cls: u.cls, img: u.img || '',
 			posx: u.posx, posy: u.posy,
@@ -250,6 +315,7 @@ function captureTurnState() {
 		remainTurns: remain_turns,
 		footerMode: footerMode,
 		resumedLevel: resumedLevel,
+		momentum: battleMomentum,
 		units: armys.map(function (unit) { return Object.assign({}, unit); }),
 		selectedIds: selectedPieces.map(function (unit) { return unit.id; }),
 		selectedEnemyIds: selectedEnemies.map(function (unit) { return unit.id; }),
@@ -318,6 +384,7 @@ function performUndo() {
 	remain_turns = state.remainTurns;
 	footerMode = state.footerMode;
 	resumedLevel = state.resumedLevel;
+	battleMomentum = Math.max(0, Math.min(MAX_BATTLE_MOMENTUM, Number(state.momentum) || 0));
 	state.units.forEach(function (saved, index) {
 		const unit = armys[index];
 		if (!unit) return;
@@ -353,6 +420,7 @@ function performUndo() {
 	updateRangePositions();
 	renderOrderArrows();
 	renderUndoButton();
+	renderBattleStatus();
 	const left = Math.max(0, MAX_UNDO_USES - undoUses);
 	if (typeof toast === 'function') toast(undoText('game.undoDone', { left: left }, '已回退一步，本关还可回退 ' + left + ' 次。'));
 }
@@ -686,7 +754,7 @@ function nextStep() {
 		) {
 			// 已经到达目标，如果在攻击范围内，就攻击
 			if(inAttackRange) {
-				atktar.lp -= element.atk;
+				atktar.lp -= battleAttackPower(element);
 				updateUnitHealth(atktar);
 				if (typeof fxMarkFired === 'function') fxMarkFired(element, atktar);
 
@@ -721,7 +789,7 @@ function nextStep() {
 			if(dot >= 0) {
 				// 正在靠近敌人/没有离开
 				// 保持原来的攻击逻辑
-				atktar.lp -= element.atk;
+				atktar.lp -= battleAttackPower(element);
 				updateUnitHealth(atktar);
 				if (typeof fxMarkFired === 'function') fxMarkFired(element, atktar);
 
@@ -1438,6 +1506,7 @@ function checkWinState() {
 
 buttonContainer.addEventListener('click', function() {
 	rememberTurnForUndo();
+	const redCountBefore = aliveUnitCount('red');
 	const positionsBefore = armys.map(function (unit) {
 		return { id: unit.id, x: unit.posx, y: unit.posy };
 	});
@@ -1476,6 +1545,8 @@ buttonContainer.addEventListener('click', function() {
 		const unit = armys.find(function (item) { return item.id === before.id; });
 		return unit && (Math.abs(unit.posx - before.x) > eps || Math.abs(unit.posy - before.y) > eps);
 	});
+	const redDefeatedThisTurn = Math.max(0, redCountBefore - aliveUnitCount('red'));
+	updateBattleMomentum(redDefeatedThisTurn);
 
 	// 防止误触造成多次触发
 	// 测试时会注释，发布时记得删去
@@ -1489,6 +1560,7 @@ buttonContainer.addEventListener('click', function() {
 	updateRangePositions();
 	renderOrderArrows();
 	renderUndoButton();
+	renderBattleStatus();
 	if (!anyUnitMoved && boardContainer.style.display !== 'none') {
 		const message = gameText('game.noMovement', null, '本回合没有任何部队机动。请先下达移动命令，或确认双方已经进入交火。');
 		if (typeof modalNotice === 'function') modalNotice(message);
@@ -1773,8 +1845,12 @@ boardContainer.addEventListener('mouseleave', function () {
 });
 
 document.getElementById('button-replay').addEventListener('click', () => {
-	// 加载 Replay 按钮
-	window.location.reload();
+	/* 重玩是“立即重开战斗”，不再重复剧情、简报和第一关教程图。
+	 * replay 参数只使用一次；新页面消费后会立刻从地址栏清掉。 */
+	const replayUrl = new URL(window.location.href);
+	replayUrl.searchParams.delete('resume');
+	replayUrl.searchParams.set('replay', '1');
+	window.location.href = replayUrl.toString();
 })
 
 /* to-do #13/#14：失败后跳转对应结局页（game7 失败 -> destiny-fail.html，其余 -> fail.html） */
@@ -3094,6 +3170,17 @@ function showLevelIntro() {
 
 	const meta = getLevelById(CURRENT_LEVEL_ID);
 	if (!meta) { revealBattlefield(); return; }
+
+	/* Replay 入口：跳过整套开场，恢复音乐并直接进棋盘。
+	 * 用 replaceState 清掉一次性参数，玩家随后普通刷新时仍会看到正常剧情。 */
+	const entryUrl = new URL(window.location.href);
+	if (entryUrl.searchParams.get('replay') === '1') {
+		entryUrl.searchParams.delete('replay');
+		window.history.replaceState(null, '', entryUrl.pathname + entryUrl.search + entryUrl.hash);
+		if (typeof initBgm === 'function') initBgm('game-music');
+		revealBattlefield();
+		return;
+	}
 	warmLevelIntroAssets(meta);
 
 	/* 兜底包装：任何一步抛异常都必须 revealBattlefield()，
@@ -3122,7 +3209,14 @@ function showLevelIntro() {
 	story.push({
 		who: function () { return gameText('dialogue.briefing', null, '战役简报'); },
 		role: meta.name,
-		text: meta.hint || function () { return gameText('dialogue.defeatAll', null, '击败所有红方单位即可获胜。'); },
+		text: function () {
+			const hint = meta.hint ? gameContent(meta.hint) : gameText('dialogue.defeatAll', null, '击败所有红方单位即可获胜。');
+			return gameText('game.briefingDifficulty', {
+				level: Math.max(1, Math.min(7, Number(meta.difficulty) || 1)),
+				mechanic: gameContent(meta.mechanic || ''),
+				hint: hint
+			}, hint);
+		},
 		kind: 'briefing',
 		chapter: meta.chapter || meta.name,
 		location: meta.location || '',
@@ -3251,6 +3345,7 @@ window.addEventListener('ui:languagechange', function () {
 	renderUndoButton();
 	renderInfoPanel();
 	renderEnemyPanel();
+	renderBattleStatus();
 	const modeButton = document.getElementById('button-mode');
 	if (modeButton) {
 		modeButton.textContent = viewMode === 'enemy'

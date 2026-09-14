@@ -33,6 +33,8 @@
 			'ui.language': '语言',
 			'ui.darkMode': '开启夜览模式',
 			'ui.lightMode': '关闭夜览模式',
+			'ui.soundOff': '关闭声音',
+			'ui.soundOn': '开启声音',
 			'ui.showPassword': '显示密码',
 			'ui.hidePassword': '隐藏密码',
 			'ui.close': '关闭',
@@ -117,6 +119,11 @@
 			'game.undoEmpty': '当前没有可以回退的步骤。',
 			'game.undoDone': '已回退一步，本关还可回退 {left} 次。',
 			'game.noMovement': '本回合没有任何部队机动。请先下达移动命令，或确认双方已经进入交火。',
+			'game.difficulty': '威胁 {level}/7',
+			'game.enemyRemain': '敌军 {count}',
+			'game.momentum': '战意 {level}/3 · +{bonus}%',
+			'game.momentumGain': '歼敌 {kills} 支，战意升至 {level}/3：下一步我军攻击 +{bonus}%。',
+			'game.briefingDifficulty': '威胁等级 {level}/7 · {mechanic}\n{hint}',
 			'game.nextGame': '下一关',
 			'game.replay': '重玩本关',
 			'game.save': '保存',
@@ -231,6 +238,7 @@
 		},
 		'zh-TW': {
 			'ui.language': '語言', 'ui.darkMode': '開啟夜覽模式', 'ui.lightMode': '關閉夜覽模式',
+			'ui.soundOff': '關閉聲音', 'ui.soundOn': '開啟聲音',
 			'ui.showPassword': '顯示密碼', 'ui.hidePassword': '隱藏密碼', 'ui.close': '關閉',
 			'site.title': '拿破崙戰爭', 'site.subtitle': '回合制策略小遊戲 · 消滅紅方軍隊，改寫歷史',
 			'auth.loginTitle': '登入', 'auth.loginButton': '登 入', 'auth.registerTitle': '註冊新帳號', 'auth.registerButton': '註 冊',
@@ -269,6 +277,10 @@
 			'game.undo': '回退 {left}/3', 'game.undoTitle': '回退到上一步（本關最多使用 3 次）',
 			'game.undoEmpty': '目前沒有可以回退的步驟。', 'game.undoDone': '已回退一步，本關還可回退 {left} 次。',
 			'game.noMovement': '本回合沒有任何部隊機動。請先下達移動命令，或確認雙方已經進入交火。',
+			'game.difficulty': '威脅 {level}/7', 'game.enemyRemain': '敵軍 {count}',
+			'game.momentum': '戰意 {level}/3 · +{bonus}%',
+			'game.momentumGain': '殲敵 {kills} 支，戰意升至 {level}/3：下一步我軍攻擊 +{bonus}%。',
+			'game.briefingDifficulty': '威脅等級 {level}/7 · {mechanic}\n{hint}',
 			'game.menu': '主畫面', 'game.viewEnemy': '查看敵軍', 'game.backCommand': '返回指揮', 'game.win': '勝利', 'game.lose': '戰敗',
 			'game.endingEarly': '查看結局：提早失利', 'game.endingDestiny': '查看結局：命運無法改變',
 			'game.saveTitle': '把目前關卡的中途狀態存進所選存檔', 'game.loadTitle': '讀取所選存檔的中途狀態（覆蓋目前進度）',
@@ -333,6 +345,7 @@
 		},
 		en: {
 			'ui.language': 'Language', 'ui.darkMode': 'Turn on night mode', 'ui.lightMode': 'Turn off night mode',
+			'ui.soundOff': 'Mute sound', 'ui.soundOn': 'Turn sound on',
 			'ui.showPassword': 'Show password', 'ui.hidePassword': 'Hide password', 'ui.close': 'Close',
 			'site.title': 'Napoleonic Wars', 'site.subtitle': 'Turn-based strategy · Defeat the red army and rewrite history',
 			'auth.loginTitle': 'Log In', 'auth.loginButton': 'Log In', 'auth.registerTitle': 'Create an Account', 'auth.registerButton': 'Register',
@@ -371,6 +384,10 @@
 			'game.undo': 'Undo {left}/3', 'game.undoTitle': 'Return to the previous step (up to 3 uses per battle)',
 			'game.undoEmpty': 'There is no previous step to restore.', 'game.undoDone': 'Step restored. {left} undo uses remain.',
 			'game.noMovement': 'No unit moved this turn. Issue a movement order, or confirm that both sides are already engaged.',
+			'game.difficulty': 'Threat {level}/7', 'game.enemyRemain': 'Enemy {count}',
+			'game.momentum': 'Morale {level}/3 · +{bonus}%',
+			'game.momentumGain': '{kills} enemy unit(s) defeated. Morale is now {level}/3: French attack +{bonus}% next step.',
+			'game.briefingDifficulty': 'THREAT {level}/7 · {mechanic}\n{hint}',
 			'game.menu': 'Menu', 'game.viewEnemy': 'Inspect Enemy', 'game.backCommand': 'Back to Command', 'game.win': 'You Win', 'game.lose': 'Defeat',
 			'game.endingEarly': 'View Ending: Early Defeat', 'game.endingDestiny': 'View Ending: Fate Prevails',
 			'game.saveTitle': 'Save this battle to the selected slot', 'game.loadTitle': 'Load the selected mid-battle save and replace current progress',
@@ -651,6 +668,16 @@
 			button.setAttribute('aria-label', button.title);
 			button.setAttribute('aria-pressed', isDark ? 'true' : 'false');
 		}
+		var sound = document.getElementById('ui-sound');
+		if (sound) {
+			var muted = typeof window.isBgmMuted === 'function' ? window.isBgmMuted() : false;
+			sound.innerHTML = muted
+				? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4Z"></path><path class="sound-slash" d="M17 9l5 6M22 9l-5 6"></path></svg>'
+				: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4Z"></path><path class="sound-wave" d="M16 8.2a5 5 0 010 7.6M18.7 5.5a8.8 8.8 0 010 13"></path></svg>';
+			sound.title = uiT(muted ? 'ui.soundOn' : 'ui.soundOff');
+			sound.setAttribute('aria-label', sound.title);
+			sound.setAttribute('aria-pressed', muted ? 'true' : 'false');
+		}
 	}
 
 	function createToolbar() {
@@ -681,6 +708,17 @@
 		theme.addEventListener('click', toggleTheme);
 
 		bar.appendChild(select);
+		if (document.querySelector('audio')) {
+			var sound = document.createElement('button');
+			sound.id = 'ui-sound';
+			sound.className = 'ui-sound';
+			sound.type = 'button';
+			sound.addEventListener('click', function () {
+				if (typeof window.toggleBgmMuted === 'function') window.toggleBgmMuted();
+				updateToolbar();
+			});
+			bar.appendChild(sound);
+		}
 		bar.appendChild(theme);
 		document.body.appendChild(bar);
 		updateToolbar();
@@ -779,6 +817,7 @@
 	window.applyUiTranslations = applyUiTranslations;
 	window.setUiLanguage = setLanguage;
 	window.showUiNotice = showUiNotice;
+	window.addEventListener('bgm:statechange', updateToolbar);
 
 	if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initUi);
 	else initUi();
