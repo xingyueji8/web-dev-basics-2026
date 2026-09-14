@@ -1596,6 +1596,10 @@ function refreshSelectedUI() {
 		const el = document.getElementById(p.id);
 		if (el) el.classList.add('selected');
 	});
+	/* 选中集合改变时终止上一条鼠标预览；下一次移动鼠标会从新选中的部队
+	 * 展开一条完整军令箭头，避免旧箭头残留在棋盘上。 */
+	if (typeof clearOrderPreview === 'function') clearOrderPreview();
+	if (boardContainer) boardContainer.classList.toggle('is-order-aiming', selectedPieces.length > 0);
 	fireSelectionChanged();
 }
 
@@ -2434,6 +2438,25 @@ document
 
 renderEnemyPanel();
 
+/* Esc 是战场级“取消当前操作”：蓝方选中、敌方查看选中、框选和临时箭头
+ * 必须一起清理。弹窗/剧情打开时让它们自己的 Esc 逻辑优先处理。 */
+document.addEventListener('keydown', function (e) {
+	if (e.key !== 'Escape' || e.defaultPrevented) return;
+	if (document.querySelector('.ui-modal-mask, .dialog-overlay, .level-intro-image-overlay')) return;
+
+	const hadSelection = selectedPieces.length > 0 || selectedEnemies.length > 0;
+	if (!hadSelection && !dragBoxState) return;
+
+	e.preventDefault();
+	dragBoxState = null;
+	hideBox();
+	clearOrderPreview();
+	if (isArrowVisible) hideArrow();
+	clearSelection();
+	clearEnemies();
+	clearHoverMatches();
+});
+
 /* ---------- 显示条悬停联动 ---------- */
 
 function clearHoverMatches() {
@@ -2754,6 +2777,26 @@ window.__spawnUnit =
 let orderLayer = null;
 let orderEls = {};
 
+function orderArrowMarkup() {
+	return '<span class="oa-origin"></span>' +
+		'<span class="oa-line"></span>' +
+		'<span class="oa-head"></span>';
+}
+
+function positionOrderArrow(el, x1, y1, x2, y2) {
+	const dx = x2 - x1;
+	const dy = y2 - y1;
+	const dist = Math.sqrt(dx * dx + dy * dy);
+	if (dist < 2) return false;
+
+	const deg = Math.atan2(dy, dx) * 180 / Math.PI;
+	el.style.left = x1 + 'px';
+	el.style.top = (y1 - 9) + 'px';
+	el.style.width = dist + 'px';
+	el.style.transform = 'rotate(' + deg + 'deg)';
+	return true;
+}
+
 function ensureOrderLayer() {
 
 	if (
@@ -2823,9 +2866,7 @@ function upsertOrderArrow(
 					: ''
 			);
 
-		el.innerHTML =
-			'<div class="oa-line"></div>' +
-			'<div class="oa-head"></div>';
+		el.innerHTML = orderArrowMarkup();
 
 		orderLayer.appendChild(el);
 
@@ -2835,47 +2876,12 @@ function upsertOrderArrow(
 			item;
 	}
 
-	const dx =
-		x2 - x1;
-
-	const dy =
-		y2 - y1;
-
-	const dist =
-		Math.sqrt(
-			dx * dx +
-			dy * dy
-		);
-
-	if (dist < 2) {
+	if (!positionOrderArrow(item.el, x1, y1, x2, y2)) {
 
 		removeOrderArrow(id);
 
 		return;
 	}
-
-	const deg =
-		Math.atan2(
-			dy,
-			dx
-		) * 180 / Math.PI;
-
-	const el =
-		item.el;
-
-	el.style.left =
-		x1 + 'px';
-
-	el.style.top =
-		(y1 - 2) + 'px';
-
-	el.style.width =
-		dist + 'px';
-
-	el.style.transform =
-		'rotate(' +
-		deg +
-		'deg)';
 }
 
 /* 每回合/每次下令后刷新 */
@@ -2977,6 +2983,7 @@ function renderOrderArrows() {
 /* ---- 预览箭头 ---- */
 
 let previewLayer = null;
+let previewEls = {};
 
 function ensurePreviewLayer() {
 
@@ -3002,6 +3009,7 @@ function ensurePreviewLayer() {
 	boardContainer.appendChild(
 		previewLayer
 	);
+	previewEls = {};
 
 	return previewLayer;
 }
@@ -3014,68 +3022,35 @@ function clearOrderPreview() {
 	) {
 		previewLayer.innerHTML = '';
 	}
+	previewEls = {};
 }
 
 function previewArrow(
+	id,
 	x1,
 	y1,
 	x2,
 	y2
 ) {
+	let el = previewEls[id];
+	if (!el) {
+		el = document.createElement('div');
+		el.className = 'order-arrow order-arrow--preview';
+		el.innerHTML = orderArrowMarkup();
+		ensurePreviewLayer().appendChild(el);
+		previewEls[id] = el;
+	}
 
-	const dx =
-		x2 - x1;
-
-	const dy =
-		y2 - y1;
-
-	const dist =
-		Math.sqrt(
-			dx * dx +
-			dy * dy
-		);
-
-	if (dist < 2) return;
-
-	const el =
-		document.createElement('div');
-
-	el.className =
-		'order-arrow order-arrow--preview';
-
-	el.innerHTML =
-		'<div class="oa-line"></div>' +
-		'<div class="oa-head"></div>';
-
-	const deg =
-		Math.atan2(
-			dy,
-			dx
-		) * 180 / Math.PI;
-
-	el.style.left =
-		x1 + 'px';
-
-	el.style.top =
-		(y1 - 2) + 'px';
-
-	el.style.width =
-		dist + 'px';
-
-	el.style.transform =
-		'rotate(' +
-		deg +
-		'deg)';
-
-	ensurePreviewLayer()
-		.appendChild(el);
+	if (!positionOrderArrow(el, x1, y1, x2, y2)) {
+		el.remove();
+		delete previewEls[id];
+	}
 }
 
 function renderOrderPreview(e) {
 
-	clearOrderPreview();
-
 	if (viewMode === 'enemy') {
+		clearOrderPreview();
 		return;
 	}
 
@@ -3084,7 +3059,10 @@ function renderOrderPreview(e) {
 			isAliveBlue
 		);
 
-	if (!list.length) return;
+	if (!list.length) {
+		clearOrderPreview();
+		return;
+	}
 
 	const rect = boardContentRect();
 
@@ -3108,9 +3086,11 @@ function renderOrderPreview(e) {
 			)
 		);
 
+	const seen = {};
 	list.forEach(p => {
 
 		previewArrow(
+			p.id,
 			offset +
 			distance *
 			p.posx,
@@ -3122,6 +3102,14 @@ function renderOrderPreview(e) {
 			tx,
 			ty
 		);
+		seen[p.id] = true;
+	});
+
+	Object.keys(previewEls).forEach(function (id) {
+		if (!seen[id]) {
+			previewEls[id].remove();
+			delete previewEls[id];
+		}
 	});
 }
 

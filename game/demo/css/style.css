@@ -4263,3 +4263,174 @@ html[data-theme='dark'] .ui-sound[aria-pressed='true'] { color: #9ca9b6; backgro
 @media (prefers-reduced-motion: reduce) {
 	.dialog-overlay .dialog-portrait img { animation: none !important; }
 }
+
+/* ========================================================================== */
+/* 2026-09-14 动态军令箭头：描边轨道 / 行军流光 / 令旗式箭头 / 起点军徽 */
+/* ========================================================================== */
+
+.game-page .order-layer {
+	overflow: visible;
+	z-index: 9;
+}
+
+.game-page .order-arrow {
+	--oa-main: #4ca8dd;
+	--oa-deep: #0c3155;
+	--oa-bright: #bdeaff;
+	--oa-accent: #ffe4a0;
+	--oa-glow: rgba(54, 169, 231, 0.62);
+	position: absolute;
+	height: 18px;
+	transform-origin: 0 9px;
+	opacity: 0.94;
+	filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.62)) drop-shadow(0 0 6px var(--oa-glow));
+	transition: left 0.35s ease, top 0.35s ease, width 0.22s ease, transform 0.22s ease;
+	will-change: width, transform;
+}
+
+/* 深色描边包住中间的军令色带，冰面与草地上都能保持清楚。 */
+.game-page .order-arrow .oa-line {
+	position: absolute;
+	left: 5px;
+	right: 13px;
+	top: 5px;
+	height: 8px;
+	box-sizing: border-box;
+	overflow: hidden;
+	border: 1px solid rgba(255, 229, 166, 0.64);
+	border-radius: 999px;
+	background: linear-gradient(180deg, var(--oa-bright), var(--oa-main) 46%, var(--oa-deep));
+	box-shadow: inset 0 1px rgba(255, 255, 255, 0.64), inset 0 -2px rgba(3, 19, 35, 0.5), 0 0 8px var(--oa-glow);
+}
+
+/* 一段段向箭头方向前进的金色信号，表示部队正在等待行军命令。 */
+.game-page .order-arrow .oa-line::before {
+	content: '';
+	position: absolute;
+	inset: 1px 0;
+	border-radius: inherit;
+	background: repeating-linear-gradient(90deg, transparent 0 7px, var(--oa-accent) 7px 12px, transparent 12px 18px);
+	background-position: 0 0;
+	opacity: 0.88;
+	animation: orderRouteMarch 0.72s linear infinite;
+}
+
+.game-page .order-arrow .oa-line::after {
+	content: '';
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: -30%;
+	width: 24%;
+	background: linear-gradient(90deg, transparent, rgba(255,255,255,0.92), transparent);
+	transform: skewX(-18deg);
+	animation: orderRouteGlint 2.1s ease-in-out infinite;
+}
+
+/* 不是普通三角形，而是接近军旗/指挥标的燕尾箭头。 */
+.game-page .order-arrow .oa-head {
+	position: absolute;
+	right: -3px;
+	top: 0;
+	width: 23px;
+	height: 18px;
+	border: 0;
+	clip-path: polygon(0 20%, 47% 20%, 47% 0, 100% 50%, 47% 100%, 47% 80%, 0 80%, 18% 50%);
+	background: linear-gradient(135deg, var(--oa-bright) 0 26%, var(--oa-main) 48%, var(--oa-deep) 100%);
+	filter: drop-shadow(0 0 4px var(--oa-glow));
+}
+
+.game-page .order-arrow .oa-head::after {
+	content: '';
+	position: absolute;
+	inset: 3px 4px 3px 3px;
+	clip-path: inherit;
+	background: linear-gradient(135deg, rgba(255,255,255,0.7), var(--oa-accent) 60%, rgba(255,255,255,0.12));
+	opacity: 0.72;
+}
+
+.game-page .order-arrow .oa-origin {
+	position: absolute;
+	left: -3px;
+	top: 4px;
+	width: 10px;
+	height: 10px;
+	box-sizing: border-box;
+	border: 2px solid var(--oa-accent);
+	border-radius: 50%;
+	background: radial-gradient(circle, #fff7d8 0 18%, var(--oa-main) 22% 52%, var(--oa-deep) 56%);
+	box-shadow: 0 0 0 2px rgba(9, 29, 48, 0.72), 0 0 9px var(--oa-glow);
+	animation: orderOriginSignal 1.55s ease-in-out infinite;
+}
+
+.game-page .order-arrow--red {
+	--oa-main: #bc4e45;
+	--oa-deep: #561a1a;
+	--oa-bright: #f2a28e;
+	--oa-accent: #e8bd72;
+	--oa-glow: rgba(190, 61, 53, 0.5);
+}
+
+/* 选中部队后的鼠标预览使用更亮的帝国金 + 海军蓝，并只在首次出现时展开。 */
+.game-page .order-arrow--preview {
+	--oa-main: #efc45f;
+	--oa-deep: #173f68;
+	--oa-bright: #fff1b9;
+	--oa-accent: #fff8dc;
+	--oa-glow: rgba(255, 205, 89, 0.78);
+	z-index: 2;
+	opacity: 1;
+	filter: drop-shadow(0 3px 3px rgba(0,0,0,0.72)) drop-shadow(0 0 10px var(--oa-glow));
+	animation: orderArrowDeploy 0.32s cubic-bezier(.16,.78,.22,1) both;
+}
+
+.game-page .order-arrow--preview .oa-line {
+	height: 9px;
+	top: 4.5px;
+	border-color: rgba(255, 239, 188, 0.94);
+}
+
+.game-page .order-arrow--preview .oa-head {
+	animation: orderHeadSignal 1.12s ease-in-out infinite;
+}
+
+.game-page #board.is-order-aiming { cursor: crosshair; }
+.game-page #board.is-order-aiming .chess.selected {
+	animation: selectedOrderSignal 1.45s ease-in-out infinite;
+}
+
+@keyframes orderRouteMarch {
+	to { background-position: 36px 0; }
+}
+
+@keyframes orderRouteGlint {
+	0%, 38% { left: -30%; opacity: 0; }
+	52% { opacity: 0.9; }
+	72%, 100% { left: 112%; opacity: 0; }
+}
+
+@keyframes orderOriginSignal {
+	0%, 100% { scale: 0.9; box-shadow: 0 0 0 2px rgba(9,29,48,0.72), 0 0 5px var(--oa-glow); }
+	50% { scale: 1.16; box-shadow: 0 0 0 3px rgba(255,226,155,0.2), 0 0 13px var(--oa-glow); }
+}
+
+@keyframes orderArrowDeploy {
+	from { opacity: 0.25; clip-path: inset(0 96% 0 0); }
+	to { opacity: 1; clip-path: inset(-14px -14px -14px -14px); }
+}
+
+@keyframes orderHeadSignal {
+	0%, 100% { scale: 0.92; filter: drop-shadow(0 0 3px var(--oa-glow)); }
+	50% { scale: 1.08; filter: drop-shadow(0 0 9px var(--oa-glow)); }
+}
+
+@keyframes selectedOrderSignal {
+	0%, 100% { box-shadow: 0 0 18px 4px rgba(60,150,255,0.82), 0 0 0 0 rgba(244,204,106,0); }
+	50% { box-shadow: 0 0 24px 6px rgba(60,150,255,0.95), 0 0 0 5px rgba(244,204,106,0.28); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.game-page .order-arrow,
+	.game-page .order-arrow *,
+	.game-page #board.is-order-aiming .chess.selected { animation: none !important; }
+}
