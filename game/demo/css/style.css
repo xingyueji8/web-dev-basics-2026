@@ -4663,7 +4663,7 @@ html[data-theme='dark'] body.page-group {
 		linear-gradient(145deg, #0a1724, #01040a 78%);
 }
 
-/* 动作类延后一帧挂载（dialog.js），这里把四类动作拉开到肉眼可辨的幅度。 */
+/* 动作类会由 dialog.js 逐句强制重启；这里把四类动作拉开到肉眼可辨的幅度。 */
 .dialog-overlay .dialog-portrait img {
 	backface-visibility: hidden;
 	will-change: transform;

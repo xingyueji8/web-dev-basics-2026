@@ -108,7 +108,6 @@ function playDialogue(lines, onDone) {
 	});
 
 	let i = 0;
-	let motionFrame = 0;
 	let motionTick = 0;
 	function inferPortraitAction(line, index) {
 		if (line.action) return line.action;
@@ -139,7 +138,7 @@ function playDialogue(lines, onDone) {
 			holder.classList.toggle('is-listening', isBriefing || position !== side);
 			holder.classList.remove('is-gesturing', 'is-reacting', 'is-action-command', 'is-action-report', 'is-action-challenge', 'is-action-resolve');
 			if (speaking) {
-				/* 先清掉上一句动作，等浏览器真正绘制一帧后再重新挂类。
+				/* 先清掉上一句动作，刷新图片自身布局后再重新挂类。
 				 * 这样第一句与同一人物连续发言都能重新播放，而不是停在动作终点。 */
 				pendingMotions.push({ holder: holder, classes: ['is-gesturing', 'is-action-' + action] });
 			} else if (!holder.classList.contains('is-empty')) {
@@ -148,16 +147,22 @@ function playDialogue(lines, onDone) {
 		});
 
 		const tick = ++motionTick;
-		if (motionFrame) window.cancelAnimationFrame(motionFrame);
-		/* 强制提交“无动作类”状态，再于下一帧启动动作，保证 CSS 动画可见。 */
-		void overlay.offsetWidth;
-		motionFrame = window.requestAnimationFrame(function () {
-			if (tick !== motionTick || !overlay.isConnected) return;
-			pendingMotions.forEach(function (motion) {
-				motion.holder.classList.add.apply(motion.holder.classList, motion.classes);
-			});
-			overlay.dataset.motionTick = String(tick);
+		/* 动画实际挂在 img 上：清类后读取图片布局，再同步加回动作类。
+		 * 这比只刷新 holder 或等待下一帧更可靠，也不会在翻页后短暂停成静态。 */
+		pendingMotions.forEach(function (motion) {
+			const img = motion.holder.querySelector('img');
+			if (img) void img.offsetWidth;
+			motion.holder.classList.add.apply(motion.holder.classList, motion.classes);
+			/* 现代浏览器再显式把新生成的 CSS 动画拨回 0 秒；旧浏览器仍由上面的
+			 * 强制布局方案正常启动。 */
+			if (img && typeof img.getAnimations === 'function') {
+				img.getAnimations().forEach(function (animation) {
+					animation.cancel();
+					animation.play();
+				});
+			}
 		});
+		overlay.dataset.motionTick = String(tick);
 
 		overlay.dataset.scene = line.scene || 'campaign';
 		box.classList.toggle('dialog-box--briefing', isBriefing);
@@ -179,7 +184,6 @@ function playDialogue(lines, onDone) {
 	}
 
 	function finish() {
-		if (motionFrame) window.cancelAnimationFrame(motionFrame);
 		motionTick += 1;
 		window.removeEventListener('ui:languagechange', refreshLanguage);
 		document.body.classList.remove('dialogue-active');
