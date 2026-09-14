@@ -108,6 +108,8 @@ function playDialogue(lines, onDone) {
 	});
 
 	let i = 0;
+	let motionFrame = 0;
+	let motionTick = 0;
 	function inferPortraitAction(line, index) {
 		if (line.action) return line.action;
 		const identity = String(line.who || '') + ' ' + String(line.role || '');
@@ -120,6 +122,7 @@ function playDialogue(lines, onDone) {
 		const line = lines[j] || {};
 		const side = line.side === 'right' ? 'right' : 'left';
 		const isBriefing = line.kind === 'briefing';
+		const pendingMotions = [];
 
 		if (line.portrait) {
 			portraits[side].source = line.portrait;
@@ -136,13 +139,24 @@ function playDialogue(lines, onDone) {
 			holder.classList.toggle('is-listening', isBriefing || position !== side);
 			holder.classList.remove('is-gesturing', 'is-reacting', 'is-action-command', 'is-action-report', 'is-action-challenge', 'is-action-resolve');
 			if (speaking) {
-				/* 每句按身份切换动作：下令 / 汇报 / 对峙 / 沉思，避免所有人物统一弹一下。 */
-				void holder.offsetWidth;
-				holder.classList.add('is-gesturing', 'is-action-' + action);
+				/* 先清掉上一句动作，等浏览器真正绘制一帧后再重新挂类。
+				 * 这样第一句与同一人物连续发言都能重新播放，而不是停在动作终点。 */
+				pendingMotions.push({ holder: holder, classes: ['is-gesturing', 'is-action-' + action] });
 			} else if (!holder.classList.contains('is-empty')) {
-				void holder.offsetWidth;
-				holder.classList.add('is-reacting');
+				pendingMotions.push({ holder: holder, classes: ['is-reacting'] });
 			}
+		});
+
+		const tick = ++motionTick;
+		if (motionFrame) window.cancelAnimationFrame(motionFrame);
+		/* 强制提交“无动作类”状态，再于下一帧启动动作，保证 CSS 动画可见。 */
+		void overlay.offsetWidth;
+		motionFrame = window.requestAnimationFrame(function () {
+			if (tick !== motionTick || !overlay.isConnected) return;
+			pendingMotions.forEach(function (motion) {
+				motion.holder.classList.add.apply(motion.holder.classList, motion.classes);
+			});
+			overlay.dataset.motionTick = String(tick);
 		});
 
 		overlay.dataset.scene = line.scene || 'campaign';
@@ -165,6 +179,8 @@ function playDialogue(lines, onDone) {
 	}
 
 	function finish() {
+		if (motionFrame) window.cancelAnimationFrame(motionFrame);
+		motionTick += 1;
 		window.removeEventListener('ui:languagechange', refreshLanguage);
 		document.body.classList.remove('dialogue-active');
 		overlay.remove();
