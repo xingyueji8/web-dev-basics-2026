@@ -2764,11 +2764,13 @@ body {
 
 /* 全站按钮统一为更柔和的圆角，并让点击反馈与原有 transform 定位互不冲突。 */
 button,
+.form-box button,
 .game-btn,
 .level-btn,
 .menu-link,
 .turn-button,
 .result-button,
+.ui-theme,
 .ui-btn {
 	border-radius: 14px;
 	transition:
