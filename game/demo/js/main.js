@@ -2847,7 +2847,8 @@ function upsertOrderArrow(
 	y1,
 	x2,
 	y2,
-	isRed
+	isRed,
+	commandSignature
 ) {
 
 	let item =
@@ -2874,6 +2875,16 @@ function upsertOrderArrow(
 
 		orderEls[id] =
 			item;
+	}
+
+	/* 只有“新下达/改换目标”的军令才重新播放铺展动画。
+	 * 棋子在后续回合向目标移动时，箭头会随当前位置缩短，但不能每步都闪回重播。 */
+	if (item.commandSignature !== commandSignature) {
+		item.commandSignature = commandSignature;
+		item.el.classList.remove('order-arrow--deploying');
+		/* 强制提交一次无动画状态，随后重新加类，确保同一棋子改令时也从起点画到终点。 */
+		void item.el.offsetWidth;
+		item.el.classList.add('order-arrow--deploying');
 	}
 
 	if (!positionOrderArrow(item.el, x1, y1, x2, y2)) {
@@ -2964,7 +2975,8 @@ function renderOrderArrows() {
 			y1,
 			x2,
 			y2,
-			u.color === 'red'
+			u.color === 'red',
+			String(u.targetx) + ':' + String(u.targety)
 		);
 
 		seen[u.id] =
