@@ -3332,6 +3332,7 @@ body.page-menu {
 }
 
 .dialog-box {
+	bottom: 0;
 	min-height: clamp(190px, 27svh, 258px);
 	padding: clamp(1.15rem, 2.6vh, 1.65rem) max(1.25rem, calc((100vw - 960px) / 2)) clamp(1.15rem, 2.5vh, 1.5rem);
 	overflow: hidden;
