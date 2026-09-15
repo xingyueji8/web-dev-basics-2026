@@ -1507,8 +1507,8 @@ function checkWinState() {
 buttonContainer.addEventListener('click', function() {
 	rememberTurnForUndo();
 	const redCountBefore = aliveUnitCount('red');
-	const positionsBefore = armys.map(function (unit) {
-		return { id: unit.id, x: unit.posx, y: unit.posy };
+	const unitStatesBefore = armys.map(function (unit) {
+		return { id: unit.id, x: unit.posx, y: unit.posy, lp: Number(unit.lp) || 0 };
 	});
 	// 点击按钮时推进 24 '帧'
 	clearDisable();
@@ -1541,9 +1541,13 @@ buttonContainer.addEventListener('click', function() {
 	}
 	// 开火特效（2026-09）：24 帧结算完后，给本回合开过火的单位统一生成烟雾 / 枪口火光
 	if (typeof fxFlush === 'function') fxFlush();
-	const anyUnitMoved = positionsBefore.some(function (before) {
+	const anyUnitMoved = unitStatesBefore.some(function (before) {
 		const unit = armys.find(function (item) { return item.id === before.id; });
 		return unit && (Math.abs(unit.posx - before.x) > eps || Math.abs(unit.posy - before.y) > eps);
+	});
+	const anyUnitDamaged = unitStatesBefore.some(function (before) {
+		const unit = armys.find(function (item) { return item.id === before.id; });
+		return unit && (Number(unit.lp) || 0) < before.lp - eps;
 	});
 	const redDefeatedThisTurn = Math.max(0, redCountBefore - aliveUnitCount('red'));
 	updateBattleMomentum(redDefeatedThisTurn);
@@ -1561,7 +1565,7 @@ buttonContainer.addEventListener('click', function() {
 	renderOrderArrows();
 	renderUndoButton();
 	renderBattleStatus();
-	if (!anyUnitMoved && boardContainer.style.display !== 'none') {
+	if (!anyUnitMoved && !anyUnitDamaged && boardContainer.style.display !== 'none') {
 		const message = gameText('game.noMovement', null, '本回合没有任何部队机动。请先下达移动命令，或确认双方已经进入交火。');
 		if (typeof modalNotice === 'function') modalNotice(message);
 		else if (typeof toast === 'function') toast(message);
