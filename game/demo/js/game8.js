@@ -2377,6 +2377,34 @@ function game8Win() {
         next.style.display =
             '';
     }
+
+
+    /* 实验关也走统一的战后剧情，再回到已经准备好的战果卡。 */
+    if (
+        typeof showVictoryDialogue ===
+        'function'
+    ) {
+
+        if (win) {
+
+            win.style.display =
+                'none';
+        }
+
+        if (next) {
+
+            next.style.display =
+                'none';
+        }
+
+        showVictoryDialogue(
+            star,
+            {
+                saved: false,
+                openedHidden: false
+            }
+        );
+    }
 }
 
 
@@ -2438,12 +2466,28 @@ function game8Lose() {
 
     if (tips) {
 
-        tips.innerText =
-            '敌军突破最后防线，阵地失守。' +
-            '\n' +
-            '共有 ' +
-            game8BreakthroughCount +
-            ' 支敌军到达红线。';
+        var failureText =
+            (typeof localizedText === 'function')
+                ? localizedText(
+                    '敌军突破最后防线，阵地失守。共有 ' + game8BreakthroughCount + ' 支敌军到达红线。',
+                    'The final line has fallen. ' + game8BreakthroughCount + ' enemy units reached the red line.'
+                )
+                : '敌军突破最后防线，阵地失守。';
+
+        if (
+            typeof registerLevelDefeat ===
+            'function'
+        ) {
+
+            registerLevelDefeat(
+                failureText
+            );
+
+        } else {
+
+            tips.innerText =
+                failureText;
+        }
     }
 
 

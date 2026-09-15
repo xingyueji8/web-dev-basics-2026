@@ -23,6 +23,43 @@ function gameContent(value) {
 	return (typeof uiLocalize === 'function') ? uiLocalize(value) : (value || '');
 }
 
+/* 同一关连续失败五次后，把普通败因升级为可持续查看的参谋部提示卡。 */
+let lastFailurePresentation = null;
+
+function renderFailureAdvice() {
+	const tip = document.getElementById('loseTips');
+	if (!tip || !lastFailurePresentation) return;
+	const state = lastFailurePresentation;
+	const meta = (typeof getLevelById === 'function' && typeof CURRENT_LEVEL_ID !== 'undefined')
+		? getLevelById(CURRENT_LEVEL_ID)
+		: null;
+	const hints = meta && Array.isArray(meta.retryHints) ? meta.retryHints : [];
+	delete tip.dataset.sourceText;
+	if (state.count >= 5 && hints.length) {
+		const heading = gameText('game.strategyUnlocked', { count: state.count }, '参谋部复盘 · 连续失败 ' + state.count + ' 次');
+		const lead = gameText('game.strategyLead', null, '建议下一次按这个顺序调整：');
+		tip.textContent = heading + '\n' + lead + '\n' + hints.map(function (hint, index) {
+			return (index + 1) + '. ' + gameContent(hint);
+		}).join('\n');
+		tip.classList.add('is-strategy-advice');
+		tip.dataset.failureCount = String(state.count);
+		return;
+	}
+	tip.textContent = gameContent(state.fallback);
+	tip.classList.remove('is-strategy-advice');
+	delete tip.dataset.failureCount;
+}
+
+function registerLevelDefeat(fallback) {
+	let count = 0;
+	if (typeof recordLevelFail === 'function' && typeof CURRENT_LEVEL_ID !== 'undefined') {
+		count = Number(recordLevelFail(CURRENT_LEVEL_ID)) || 0;
+	}
+	lastFailurePresentation = { count: count, fallback: fallback || '' };
+	renderFailureAdvice();
+	return count;
+}
+
 /* 连续歼敌会累积“战意”：每级令蓝方下一步攻击提高 8%，最高 3 级。
  * 它让集中火力真正有奖励，但上限只有 24%，不会把后期关卡滚成无脑碾压。 */
 function battleAttackPower(unit) {
@@ -220,7 +257,8 @@ function loadGame(game) {
 			lpMax: element.lp,
 			disabled: false,
 			cls: element.class,
-			img: element.img || ''
+			img: element.img || '',
+			formationRole: element.formationRole || ''
 		}) ;
 		updateUnitHealth(armys[armys.length - 1]);
 		movePieceTo(piece.id, -1.0, -1.0);
@@ -264,6 +302,9 @@ function loadSnapshot(snap) {
 			? CURRENT_GAME.pieces[idx].lp
 			: null;
 		const restoredMax = (cfgLp !== null) ? cfgLp : (u.lpMax || u.lp);
+		const cfgRole = (typeof CURRENT_GAME !== 'undefined' && CURRENT_GAME && CURRENT_GAME.pieces && CURRENT_GAME.pieces[idx])
+			? CURRENT_GAME.pieces[idx].formationRole
+			: '';
 		const restoredLp = Math.min(u.lp, restoredMax);
 		armys.push({
 			id: piece.id,
@@ -275,7 +316,8 @@ function loadSnapshot(snap) {
 			lpMax: restoredMax,
 			disabled: !!u.disabled,
 			escaped: !!u.escaped,
-			cls: u.cls, img: u.img || ''
+			cls: u.cls, img: u.img || '',
+			formationRole: u.formationRole || cfgRole || ''
 		});
 		updateUnitHealth(armys[armys.length - 1]);
 		movePieceTo(piece.id, u.posx, u.posy);
@@ -303,6 +345,7 @@ function captureSnapshot() {
 			targetx: u.targetx, targety: u.targety,
 			speed: u.speed, atkrange: u.atkrange, atk: u.atk, lp: u.lp,
 			lpMax: u.lpMax,   // 开局/读档时一定已按初始 LP 校准，无需兜底
+			formationRole: u.formationRole || '',
 			disabled: u.disabled,
 			escaped: !!u.escaped
 		}))
@@ -913,21 +956,28 @@ function showVictoryDialogue(star, saveResult) {
 	const meta = (typeof getLevelById === 'function' && typeof CURRENT_LEVEL_ID !== 'undefined')
 		? getLevelById(CURRENT_LEVEL_ID)
 		: null;
-	const lines = [
-		{
+	const defaults = {
+		chapter: meta ? meta.chapter : '帝国战记',
+		location: meta ? meta.location : '',
+		scene: meta ? meta.scene : 'campaign'
+	};
+	let lines = (meta && Array.isArray(meta.victoryStory) ? meta.victoryStory : []).map(function (line) {
+		return Object.assign({}, defaults, line);
+	});
+	if (!lines.length) {
+		lines.push(Object.assign({}, defaults, {
 			who: '拿破仑', role: '法兰西皇帝', side: 'left',
 			portrait: 'img/portraits/napoleon.webp',
-			chapter: meta ? meta.chapter : '帝国战记', location: meta ? meta.location : '', scene: meta ? meta.scene : 'campaign',
 			text: function () { return gameText('victory.napoleon', null, '敌军已经退出战场。收拢队伍，把鹰旗带到下一条战线。'); }
-		},
-		{
+		}));
+	}
+	lines.push(Object.assign({}, defaults, {
 			who: function () { return gameText('victory.reporter', null, '战报'); },
 			role: function () { return gameText('victory.role', null, '帝国统帅部'); },
-			kind: 'briefing', chapter: meta ? meta.chapter : '帝国战记', location: meta ? meta.location : '', scene: meta ? meta.scene : 'campaign',
+			kind: 'briefing',
 			text: function () { return victoryReportText(star, saveResult); },
 			actionLabel: function () { return gameText('victory.viewResult', null, '查看战果'); }
-		}
-	];
+		}));
 	if (typeof playDialogue === 'function') playDialogue(lines, showWinResult);
 	else showWinResult();
 }
@@ -965,7 +1015,7 @@ function checkWinState() {
 	});
 
 	/* =========================================================
-	 * Game5（2026-09 起：这场攻城战由第 5 关承载，与第 6 关整体对调）：滑铁卢·限时攻坚
+	 * Game5：斯摩棱斯克·限时攻坚
 	 *
 	 * 按通关所用步数评星：
 	 * ≤13 步：3 星
@@ -1042,7 +1092,10 @@ function checkWinState() {
 
 			if(tip) {
 				tip.style = '';
-				tip.innerHTML = '我军全部阵亡，滑铁卢攻坚失败。';
+				registerLevelDefeat(localizedText(
+					'我军全部阵亡，斯摩棱斯克攻坚失败。',
+					'Our army has been destroyed; the assault on Smolensk has failed.'
+				));
 			}
 
 			hideMidGameControls();
@@ -1072,17 +1125,10 @@ function checkWinState() {
 
 			if(tip) {
 				tip.style = '';
-				tip.innerHTML =
-					'18回合已经结束，仍有 ' +
-					redc +
-					' 支敌军存活，攻坚失败。';
-			}
-
-			if(
-				typeof recordLevelFail === 'function' &&
-				typeof CURRENT_LEVEL_ID !== 'undefined'
-			) {
-				recordLevelFail(CURRENT_LEVEL_ID);
+				registerLevelDefeat(localizedText(
+					'18回合已经结束，仍有 ' + redc + ' 支敌军存活，攻坚失败。',
+					'Eighteen turns have ended with ' + redc + ' enemy units still alive; the assault has failed.'
+				));
 			}
 
 			hideMidGameControls();
@@ -1205,15 +1251,6 @@ function checkWinState() {
 			}
 
 
-			if(
-				typeof recordLevelFail === 'function' &&
-				typeof CURRENT_LEVEL_ID !== 'undefined'
-			) {
-
-				recordLevelFail(CURRENT_LEVEL_ID);
-			}
-
-
 			const tip =
 				document.getElementById('loseTips');
 
@@ -1221,10 +1258,10 @@ function checkWinState() {
 
 				tip.style = '';
 
-				tip.innerHTML =
-					'防线已经失守！共有 ' +
-					breakthroughCount +
-					' 支敌军突破红线。';
+				registerLevelDefeat(localizedText(
+					'防线已经失守！共有 ' + breakthroughCount + ' 支敌军突破红线。',
+					'The line has fallen: ' + breakthroughCount + ' enemy units broke through.'
+				));
 			}
 
 
@@ -1258,9 +1295,10 @@ function checkWinState() {
 			if(tip) {
 
 				tip.style = '';
-
-				tip.innerHTML =
-					'最后防线已经失守，我军全部阵亡。';
+				registerLevelDefeat(localizedText(
+					'最后防线已经失守，我军全部阵亡。',
+					'The final line has fallen and all of our units have been destroyed.'
+				));
 			}
 
 
@@ -1486,15 +1524,10 @@ function checkWinState() {
 				failBtn.textContent = gameText('game.endingEarly', null, '查看结局：提早失利');
 			}
 		}
-		// to-do #15：记录同关连续失败次数
-		if (typeof recordLevelFail === 'function' && typeof CURRENT_LEVEL_ID !== 'undefined') {
-			recordLevelFail(CURRENT_LEVEL_ID);
-		}
 		let tip = loseTips[Math.floor(Math.random() * loseTips.length)]
 		if (CURRENT_LEVEL_ID === 7) tip = '……帝国第二次折戟于此，命运没有给历史第二次机会。';
 		document.getElementById('loseTips').style = '';
-		document.getElementById('loseTips').dataset.sourceText = tip;
-		document.getElementById('loseTips').textContent = gameContent(tip);
+		registerLevelDefeat(tip);
 		hideMidGameControls();
 		return ;
 	}
@@ -3156,7 +3189,7 @@ function warmIntroImage(src) {
 }
 
 function warmLevelIntroAssets(meta) {
-	(meta.story || []).forEach(function (line) {
+	(meta.story || []).concat(meta.victoryStory || []).forEach(function (line) {
 		if (!line.portrait) return;
 		warmIntroImage(line.portrait);
 		if (typeof dialogueActionPortraitSources === 'function') {
@@ -3364,5 +3397,6 @@ window.addEventListener('ui:languagechange', function () {
 			: gameText('game.viewEnemy', null, '查看敌人');
 	}
 	const tip = document.getElementById('loseTips');
-	if (tip && tip.dataset.sourceText) tip.textContent = gameContent(tip.dataset.sourceText);
+	if (lastFailurePresentation) renderFailureAdvice();
+	else if (tip && tip.dataset.sourceText) tip.textContent = gameContent(tip.dataset.sourceText);
 });

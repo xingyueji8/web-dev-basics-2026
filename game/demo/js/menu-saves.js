@@ -4,7 +4,7 @@
  *   页面上  —— 战役地图 #campaign-map：底图 img/europe-map.svg 上按 levels.js 的 map{lon,lat}
  *                摆旗标（关号 + 下方星级 / 进行中 / 隐藏关；完整关名在 title 里），
  *                **只画到"已解锁到的关卡"**（后面的不出现，打到哪长到哪）；
- *                已通关的段 = 红色流动虚线，还没打通的下一段 = 浅灰静止虚线；
+ *                已通关的段 = 绛红弧形推进箭头，还没打通的下一段 = 金灰预告箭头；
  *                刚解锁了一关时，下一段先"延伸"到终点，跑完才放出下一关的标记
  *                —— 判据是主界面自己记的 revealSeen:<用户>（见 readRevealSeen），
  *                ?unlock=N 只作为兼容 / 手动重放。
@@ -31,6 +31,10 @@
 
 	function currentU() {
 		return (typeof currentUser === 'function') ? currentUser() : null;
+	}
+
+	function localText(value) {
+		return (typeof uiLocalize === 'function') ? uiLocalize(value) : String(value || '');
 	}
 
 	function starsText(s) {
@@ -86,9 +90,7 @@
 		try { localStorage.setItem(revealSeenKey(user), String(frontier)); } catch (e) { }
 	}
 
-	/* 关卡之间的连线：已通关 → 红色虚线（静止，无动画）；还没打通的下一段 → 浅灰静止虚线。
-	   刚从结算页回来时，新解锁那段先用遮罩让虚线"一段一段加载出来"（慢，3s），
-	   跑完再放出下一关的标记。 */
+	/* 关卡之间的连线使用参谋地图式弧形推进箭头；新解锁段仍沿路径缓慢显影。 */
 	var DRAW_MS = 3000;   /* 必须与 css 的 map-route-draw 时长一致 */
 
 	/* 把一个条目画成地图标记：
@@ -119,7 +121,7 @@
 		return el;
 	}
 
-	/* 延伸动画结束：撤掉遮罩与那层"加载中"的线，放出下面那根红色虚线，并让新标记弹出来 */
+	/* 延伸动画结束：撤掉遮罩与加载层，放出完整箭头并让新标记弹出来。 */
 	function finishReveal(map, svg) {
 		var draw = svg.querySelector('.map-route__line--draw');
 		if (draw) draw.remove();
@@ -134,33 +136,76 @@
 		});
 	}
 
-	/* 关卡之间的连线：已通关 → 红色静止虚线；还没打通的下一段 → 浅灰静止虚线。
-	   新解锁那段（isNew）额外叠一层遮罩，让虚线慢慢"加载"出来。 */
+	function routeCurve(a, b, index) {
+		var dx = b.x - a.x, dy = b.y - a.y;
+		var length = Math.sqrt(dx * dx + dy * dy) || 1;
+		var bend = Math.min(58, Math.max(20, length * 0.11)) * (index % 2 === 0 ? 1 : -1);
+		var cx = (a.x + b.x) / 2 - (dy / length) * bend;
+		var cy = (a.y + b.y) / 2 + (dx / length) * bend;
+		return 'M ' + a.x.toFixed(1) + ' ' + a.y.toFixed(1) +
+			' Q ' + cx.toFixed(1) + ' ' + cy.toFixed(1) +
+			' ' + b.x.toFixed(1) + ' ' + b.y.toFixed(1);
+	}
+
+	function appendArrowMarker(defs, id, color) {
+		var NS = 'http://www.w3.org/2000/svg';
+		var marker = document.createElementNS(NS, 'marker');
+		marker.setAttribute('id', id);
+		marker.setAttribute('viewBox', '0 0 14 10');
+		marker.setAttribute('refX', '12.2');
+		marker.setAttribute('refY', '5');
+		marker.setAttribute('markerWidth', '14');
+		marker.setAttribute('markerHeight', '10');
+		marker.setAttribute('markerUnits', 'userSpaceOnUse');
+		marker.setAttribute('orient', 'auto');
+		var head = document.createElementNS(NS, 'path');
+		head.setAttribute('d', 'M 0 0 L 14 5 L 0 10 L 3.2 5 Z');
+		head.setAttribute('fill', color);
+		marker.appendChild(head);
+		defs.appendChild(marker);
+	}
+
+	function appendRoutePath(svg, d, className, markerId, from, to, kind) {
+		var NS = 'http://www.w3.org/2000/svg';
+		var path = document.createElementNS(NS, 'path');
+		path.setAttribute('d', d);
+		path.setAttribute('class', className);
+		path.setAttribute('pathLength', '100');
+		if (markerId) path.setAttribute('marker-end', 'url(#' + markerId + ')');
+		if (from !== undefined) path.dataset.from = from;
+		if (to !== undefined) path.dataset.to = to;
+		if (kind) path.dataset.kind = kind;
+		svg.appendChild(path);
+		return path;
+	}
+
+	/* 已通关段是绛红实线推进箭头；下一段是克制的金灰预告箭头。
+	   新解锁段（isNew）用同一条贝塞尔曲线做遮罩显影。 */
 	function renderRoute(svg, entries, unlockId) {
 		if (!svg) return;
 		svg.innerHTML = '';
 		var NS = 'http://www.w3.org/2000/svg';
+		var styleDefs = document.createElementNS(NS, 'defs');
+		styleDefs.setAttribute('id', 'route-style-defs');
+		appendArrowMarker(styleDefs, 'route-arrow-done', '#cf615b');
+		appendArrowMarker(styleDefs, 'route-arrow-next', '#c9b477');
+		appendArrowMarker(styleDefs, 'route-arrow-draw', '#f08a78');
+		svg.appendChild(styleDefs);
 		for (var i = 0; i < entries.length - 1; i++) {
 			var a = mapUnits(entries[i].map), b = mapUnits(entries[i + 1].map);
-			var pts = a.x + ',' + a.y + ' ' + b.x + ',' + b.y;
+			var d = routeCurve(a, b, i);
 			var done = entries[i].stars > 0;
 			var isNew = done && unlockId !== null && Number(entries[i].no) === Number(unlockId);
-
-			var line = document.createElementNS(NS, 'polyline');
-			line.setAttribute('points', pts);
-			line.setAttribute('class', 'map-route__line ' +
-				(done ? 'map-route__line--done' : 'map-route__line--next') +
-				(isNew ? ' map-route__line--pending' : ''));
-			line.dataset.from = entries[i].no;
-			line.dataset.to = entries[i + 1].no;
-			line.dataset.kind = 'link';
-			svg.appendChild(line);
+			var pendingClass = isNew ? ' map-route__line--pending' : '';
+			appendRoutePath(svg, d,
+				'map-route__underlay ' + (done ? 'map-route__underlay--done' : 'map-route__underlay--next') + pendingClass,
+				'', undefined, undefined, 'underlay');
+			appendRoutePath(svg, d,
+				'map-route__line ' + (done ? 'map-route__line--done' : 'map-route__line--next') + pendingClass,
+				done ? 'route-arrow-done' : 'route-arrow-next', entries[i].no, entries[i + 1].no, 'link');
 
 			if (isNew) {
-				// 新解锁那一段要"虚线一段一段加载出来"：给虚线盖一层遮罩，
-				// 遮罩里一根白色粗线用 map-route-draw 慢慢从起点擦到终点 —— 被擦到的虚线才露出来。
-				// 遮罩用 userSpaceOnUse 并把范围写成整个 viewBox：水平/垂直线的 bbox 有一边是 0，
-				// 默认的 objectBoundingBox 区域会被算成 0 宽度，线就整根看不见了。
+				// userSpaceOnUse 避免水平或垂直段的 objectBoundingBox 被计算成零宽度。
 				var defs = document.createElementNS(NS, 'defs');
 				defs.setAttribute('id', 'route-reveal-defs');
 				var mask = document.createElementNS(NS, 'mask');
@@ -170,22 +215,16 @@
 				mask.setAttribute('y', '0');
 				mask.setAttribute('width', '1000');
 				mask.setAttribute('height', '785');
-				var wipe = document.createElementNS(NS, 'polyline');
-				wipe.setAttribute('points', pts);
+				var wipe = document.createElementNS(NS, 'path');
+				wipe.setAttribute('d', d);
 				wipe.setAttribute('class', 'map-route__mask-line');
 				wipe.setAttribute('pathLength', '100');
 				mask.appendChild(wipe);
 				defs.appendChild(mask);
 				svg.appendChild(defs);
 
-				var draw = document.createElementNS(NS, 'polyline');
-				draw.setAttribute('points', pts);
-				draw.setAttribute('class', 'map-route__line map-route__line--draw');
+				var draw = appendRoutePath(svg, d, 'map-route__line map-route__line--draw', 'route-arrow-draw', entries[i].no, entries[i + 1].no, 'draw');
 				draw.setAttribute('mask', 'url(#route-reveal)');
-				draw.dataset.from = entries[i].no;
-				draw.dataset.to = entries[i + 1].no;
-				draw.dataset.kind = 'draw';
-				svg.appendChild(draw);
 			}
 		}
 	}
@@ -224,7 +263,7 @@
 			entries.push({
 				no: lv.id, map: lv.map, stars: s, cont: cont, state: state,
 				starsText: mapStars(s),
-				title: lv.name + ' —— ' + (cont ? '进行中，点标记继续'
+				title: localText(lv.name) + ' —— ' + (cont ? '进行中，点标记继续'
 					: (s > 0 ? mapStars(s) + '，可重玩' : '未通关，点标记开始')),
 				href: cont ? (lv.file + '?resume=1') : (s > 0 || Number(lv.id) <= frontier ? lv.file : ''),
 				fresh: revealId !== null && Number(lv.id) === revealId + 1   // 刚解锁的这一关：弹出动画
@@ -242,7 +281,7 @@
 					no: 7, map: hm.map, stars: hs7, cont: hcont, hidden: true,
 					state: hcont ? 'cont' : (hs7 > 0 ? 'done' : 'open'),
 					starsText: lv6ok ? mapStars(hs7) : '？？？',
-					title: lv6ok ? (hm.name + '（隐藏关）') : '隐藏关 —— 需第 1~6 关全部 3 星且通关第 6 关',
+					title: lv6ok ? (localText(hm.name) + '（隐藏关）') : '隐藏关 —— 需第 1~6 关全部 3 星且通关第 6 关',
 					href: lv6ok ? (hm.file + (hcont ? '?resume=1' : '')) : '',
 					fresh: false
 				});

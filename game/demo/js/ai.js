@@ -3,6 +3,7 @@
  * 关卡在各自 gameN.js 的 CURRENT_GAME 上通过 ai 字段声明策略，例如：
  *   ai: { strategy: 'breakthrough', threat: 'nearest' }       // 集中突破
  *   ai: { strategy: 'cluster', core: 0 }                       // 聚团取暖（core=红方列表内的索引）
+ *   ai: { strategy: 'guarded_core', ringRadius: 1.65 }         // 核心存活时环阵，核心倒下后反扑
  *   ai: { strategy: 'circle', center: {x,y}, radius: R }       // 圆圈防守（center/radius 可省）
  *   （不配置 ai，或 strategy 为 'stationary'，就是红方站桩——第 1、2 关设计如此）
  *
@@ -70,6 +71,51 @@ function applyEnemyAI() {
 	const elapsedTurns = Math.max(0, (Number(CURRENT_GAME.turns_limit) || 0) - (Number(remain_turns) || 0));
 	if (Number(ai.openingDelay) > elapsedTurns) {
 		reds.forEach(r => { r.targetx = r.posx; r.targety = r.posy; });
+		return;
+	}
+
+	/* 隐藏第七关的双阶段近卫阵：
+	 * ① 核心存活：核心与炮位守住原地，未接战护卫补到环形空位；
+	 * ② 核心倒下：阵型失去锚点，所有未接战残军改为追击生命最低的蓝方。
+	 * formationRole 会随存档保存，旧存档则回退到红方初始索引，确保重读后逻辑一致。 */
+	if (strategy === 'guarded_core') {
+		const allReds = armys.filter(r => r.color === 'red');
+		const taggedCore = allReds.find(r => r.formationRole === 'core');
+		const fallbackIndex = (ai.core !== undefined) ? Number(ai.core) : 0;
+		const core = taggedCore || allReds[fallbackIndex] || allReds[0];
+		if (core && !core.disabled) {
+			core.targetx = core.posx;
+			core.targety = core.posy;
+			const guards = reds.filter(r => r !== core && r.formationRole !== 'battery');
+			const radius = Number(ai.ringRadius) || 1.65;
+			guards.forEach((r, index) => {
+				if (aiIsEngaged(r)) {
+					r.targetx = r.posx;
+					r.targety = r.posy;
+					return;
+				}
+				const slot = ringSlot(index, Math.max(guards.length, 1), core, radius, -Math.PI / 2);
+				r.targetx = Math.max(0.35, Math.min(n - 0.35, slot.x));
+				r.targety = Math.max(0.35, Math.min(m - 0.35, slot.y));
+			});
+			reds.filter(r => r.formationRole === 'battery').forEach(r => {
+				r.targetx = r.posx;
+				r.targety = r.posy;
+			});
+			return;
+		}
+
+		const blues = aiAliveBlues();
+		if (!blues.length) return;
+		reds.forEach(r => {
+			if (aiIsEngaged(r)) {
+				r.targetx = r.posx;
+				r.targety = r.posy;
+				return;
+			}
+			const target = pickThreatBlue(r, blues, ai.collapseThreat || 'weakest', ai);
+			if (target) { r.targetx = target.posx; r.targety = target.posy; }
+		});
 		return;
 	}
 

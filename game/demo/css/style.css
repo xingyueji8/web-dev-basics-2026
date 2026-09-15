@@ -1495,6 +1495,23 @@ body.game-page::before {
 #win h1,
 #lose h1 { font-family: var(--ui-display); font-weight: 500; }
 
+#loseTips.is-strategy-advice {
+	box-sizing: border-box;
+	width: min(620px, calc(100vw - 72px));
+	margin: 0.85rem auto 0;
+	padding: 0.9rem 1rem 0.9rem 1.15rem;
+	border: 1px solid rgba(218, 196, 136, 0.34);
+	border-left: 4px solid #d1ad58;
+	border-radius: 4px;
+	white-space: pre-line;
+	font-size: 0.9rem !important;
+	line-height: 1.72;
+	text-align: left;
+	color: #f0dfb7;
+	background: rgba(5, 15, 27, 0.58);
+	box-shadow: inset 0 1px rgba(255, 255, 255, 0.05);
+}
+
 #info-bar,
 #enemy-info {
 	top: 50%;
@@ -1589,6 +1606,12 @@ body.dialogue-active { overflow: hidden; }
 
 .dialog-overlay[data-scene='snow'] {
 	background: radial-gradient(circle at 50% 32%, rgba(222, 226, 219, 0.26), transparent 32rem), linear-gradient(180deg, #495763, #27323b 48%, #101820);
+}
+
+.dialog-overlay[data-scene='fog'] {
+	background:
+		radial-gradient(ellipse at 52% 38%, rgba(224, 222, 205, 0.34), transparent 35rem),
+		linear-gradient(180deg, #667078, #3f494d 50%, #151c20);
 }
 
 .dialog-overlay[data-scene='battery'],
@@ -2236,24 +2259,43 @@ body.dialogue-active { overflow: hidden; }
 
 .map-route__line {
 	fill: none;
-	stroke-width: 2.6;
+	stroke-width: 3.4;
 	stroke-linecap: round;
+	stroke-linejoin: round;
 	vector-effect: non-scaling-stroke;   /* viewBox 非等比缩放，线宽靠它保持恒定 */
 }
 
-/* 已通关 → 下一关：红色虚线（**静止**，不做流动动画 —— 只有"加载新关卡"那一下才有动画） */
-.map-route__line--done {
-	stroke: #9c1c22;
-	stroke-width: 3;
-	stroke-dasharray: 9 7;
-	filter: drop-shadow(0 0 3px rgba(156, 28, 34, 0.55));
+/* 深色墨迹底边让路线像压在参谋地图上的宽头推进箭头，不再像网页虚线。 */
+.map-route__underlay {
+	fill: none;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+	vector-effect: non-scaling-stroke;
 }
 
-/* 还没打通的下一段：浅灰静止虚线（viewBox 与底图等比，所以虚线疏密均匀） */
+.map-route__underlay--done {
+	stroke: rgba(42, 17, 19, 0.56);
+	stroke-width: 7;
+}
+
+.map-route__underlay--next {
+	stroke: rgba(36, 31, 22, 0.26);
+	stroke-width: 5;
+	stroke-dasharray: 3 8;
+}
+
+/* 已通关 → 下一关：绛红实线箭头；只有刚解锁的那一段会播放显影。 */
+.map-route__line--done {
+	stroke: #a73535;
+	stroke-width: 3.5;
+	filter: drop-shadow(0 2px 1px rgba(34, 14, 15, 0.42));
+}
+
+/* 下一段只作战略预告：细金灰短划线，同样保留明确箭头方向。 */
 .map-route__line--next {
-	stroke: rgba(91, 66, 31, 0.42);
-	stroke-width: 2;
-	stroke-dasharray: 7 9;
+	stroke: rgba(126, 103, 54, 0.7);
+	stroke-width: 2.2;
+	stroke-dasharray: 3 8;
 }
 
 /* 刚从结算页回来：新解锁那一段要"虚线一段一段加载出来"（慢，3s），
@@ -2261,17 +2303,16 @@ body.dialogue-active { overflow: hidden; }
    从起点擦到终点 —— 被擦到的虚线才露出来，看起来就是虚线在往前加载。
    跑完由 JS 撤掉遮罩与这层线、放出下面的实虚线和新标记。 */
 .map-route__line--draw {
-	stroke: #9c1c22;
-	stroke-width: 3;
-	stroke-dasharray: 9 7;
-	filter: drop-shadow(0 0 4px rgba(156, 28, 34, 0.6));
+	stroke: #c84d45;
+	stroke-width: 4;
+	filter: drop-shadow(0 2px 2px rgba(52, 17, 18, 0.52));
 }
 
 /* 遮罩里的"擦除线"（本身看不见，只决定虚线露出多少） */
 .map-route__mask-line {
 	fill: none;
 	stroke: #fff;
-	stroke-width: 10;
+	stroke-width: 15;
 	stroke-dasharray: 100;
 	animation: map-route-draw 3s linear both;
 }
@@ -2961,7 +3002,7 @@ body.is-deploying .page-box {
 	58%, 100% { left: 128%; opacity: 0; }
 }
 
-/* 登录成功序章：三句独白按节奏出现，可随时跳过。 */
+/* 登录剧情结束后的地图接镜，可立即跳转。 */
 .campaign-prologue {
 	position: fixed;
 	z-index: 1200;
@@ -3002,7 +3043,7 @@ body.is-deploying .page-box {
 	height: 1px;
 	background: linear-gradient(90deg, transparent, #b99a55, transparent);
 	transform: translateX(-50%) scaleX(0);
-	animation: prologueRule 4.6s 0.45s ease both;
+	animation: prologueRule 1.8s 0.2s ease both;
 }
 
 .campaign-prologue__map {
@@ -3011,7 +3052,7 @@ body.is-deploying .page-box {
 	opacity: 0.16;
 	background: url('../img/europe-map.svg') center / min(1160px, 116vw) auto no-repeat;
 	filter: grayscale(1) invert(1) sepia(0.45) hue-rotate(160deg) brightness(0.88);
-	animation: prologueMapPush 6.8s ease-out both;
+	animation: prologueMapPush 2.4s ease-out both;
 }
 
 .campaign-prologue__copy {
@@ -3024,7 +3065,7 @@ body.is-deploying .page-box {
 }
 
 .campaign-prologue__kicker {
-	margin-bottom: clamp(1.5rem, 5vh, 3.2rem);
+	margin-bottom: clamp(1rem, 3vh, 1.8rem);
 	font-size: clamp(0.65rem, 1.2vw, 0.82rem);
 	font-weight: 700;
 	letter-spacing: 0.3em;
@@ -3046,12 +3087,12 @@ body.is-deploying .page-box {
 .campaign-prologue.is-visible .campaign-prologue__line--3 { animation: prologueLine 0.72s 2.75s ease forwards; }
 
 .campaign-prologue__enter {
-	margin-top: clamp(1.5rem, 4vh, 2.8rem);
+	margin-top: 0;
 	opacity: 0;
 	font-size: 0.74rem;
 	letter-spacing: 0.2em;
 	color: #c7b78f;
-	animation: prologueLine 0.65s 3.65s ease forwards, mapStatusPulse 1.2s 4.3s ease-in-out infinite;
+	animation: prologueLine 0.55s 0.28s ease forwards, mapStatusPulse 1.2s 0.9s ease-in-out infinite;
 }
 
 .campaign-prologue__skip {
@@ -3227,13 +3268,16 @@ body.page-menu {
 
 .campaign-map-shell .map-route__line--done,
 .campaign-map-shell .map-route__line--draw {
-	stroke: #df6d65;
-	filter: drop-shadow(0 0 5px rgba(255, 99, 88, 0.8));
+	stroke: #cf615b;
+	filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.65));
 }
 
 .campaign-map-shell .map-route__line--next {
-	stroke: rgba(229, 214, 173, 0.42);
+	stroke: rgba(221, 199, 139, 0.66);
 }
+
+.campaign-map-shell .map-route__underlay--done { stroke: rgba(22, 7, 10, 0.76); }
+.campaign-map-shell .map-route__underlay--next { stroke: rgba(6, 13, 19, 0.54); }
 
 .campaign-map-shell .map-pin__dot {
 	color: #fff1ca;
