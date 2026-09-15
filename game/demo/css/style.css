@@ -5207,3 +5207,187 @@ html[data-theme='dark'] body.page-group {
 		transition-delay: 0s !important;
 	}
 }
+
+/* ========================================================================== */
+/* 实际姿态动作帧：静止帧 → 肢体姿态改变后的动作帧，只执行一次并停住            */
+/* ========================================================================== */
+
+/* 取消旧版施加在整个人物容器上的循环位移。人物现在靠第二张真实姿态帧表演。 */
+.dialog-overlay .dialog-portrait .dialog-portrait__actor {
+	position: relative;
+	display: block;
+	animation: none !important;
+	transform: none !important;
+	will-change: auto;
+}
+
+.dialog-overlay .dialog-portrait.is-speaking.is-gesturing::before,
+.dialog-overlay .dialog-portrait.is-napoleon.is-speaking::before {
+	content: none !important;
+	animation: none !important;
+}
+
+.dialog-overlay .dialog-portrait__neutral,
+.dialog-overlay .dialog-portrait__action {
+	position: absolute;
+	inset: 0;
+	display: block;
+	width: 100%;
+	height: 100%;
+	object-fit: contain;
+	object-position: bottom center;
+	animation: none !important;
+	transform: none;
+	transform-origin: 50% 92%;
+	backface-visibility: hidden;
+	filter: drop-shadow(0 16px 22px rgba(0, 0, 0, 0.52));
+}
+
+.dialog-overlay .dialog-portrait__neutral { opacity: 1; }
+.dialog-overlay .dialog-portrait__action { opacity: 0; }
+
+/* 0.9 秒内从静止姿态过渡到伸手/递信/举剑等动作姿态；此后保持动作帧。
+   左右两侧只带 6px 的一次性重心前移，用来连接两个真实姿态，而非反复摇晃。 */
+.dialog-overlay .dialog-portrait--left.is-performing .dialog-portrait__neutral {
+	animation: portraitNeutralYield .48s .08s ease both !important;
+}
+
+.dialog-overlay .dialog-portrait--right.is-performing .dialog-portrait__neutral {
+	animation: portraitNeutralYield .48s .08s ease both !important;
+}
+
+.dialog-overlay .dialog-portrait--left.is-performing .dialog-portrait__action {
+	animation: portraitPoseTakeLeft .9s cubic-bezier(.2, .72, .2, 1) both !important;
+}
+
+.dialog-overlay .dialog-portrait--right.is-performing .dialog-portrait__action {
+	animation: portraitPoseTakeRight .9s cubic-bezier(.2, .72, .2, 1) both !important;
+}
+
+@keyframes portraitNeutralYield {
+	0%, 18% { opacity: 1; }
+	100% { opacity: 0; }
+}
+
+@keyframes portraitPoseTakeLeft {
+	0%, 10% { opacity: 0; transform: translate3d(-6px, 3px, 0) scale(.992); }
+	48% { opacity: 1; }
+	100% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
+
+@keyframes portraitPoseTakeRight {
+	0%, 10% { opacity: 0; transform: translate3d(6px, 3px, 0) scale(.992); }
+	48% { opacity: 1; }
+	100% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
+
+/* ========================================================================== */
+/* 纪录片沙盘军势箭头：平涂宽杆尖头，删除金边、金属渐变和循环跑马纹理          */
+/* ========================================================================== */
+
+.game-page .order-arrow:not(.order-arrow--preview) {
+	--oa-ink: #2f6f96;
+	height: 18px;
+	opacity: .9;
+	filter: drop-shadow(0 2px 1px rgba(17, 21, 22, .62));
+	transition: left .35s ease, top .35s ease, width .22s ease, transform .22s ease;
+}
+
+.game-page .order-arrow--red:not(.order-arrow--preview) {
+	--oa-ink: #b5423d;
+}
+
+.game-page .order-arrow:not(.order-arrow--preview) .oa-origin { display: none; }
+
+.game-page .order-arrow:not(.order-arrow--preview) .oa-line {
+	left: 3px;
+	right: 18px;
+	top: 5px;
+	height: 8px;
+	overflow: visible;
+	border: 0;
+	border-radius: 2px 0 0 2px;
+	background: var(--oa-ink);
+	box-shadow: none;
+}
+
+.game-page .order-arrow:not(.order-arrow--preview) .oa-line::before,
+.game-page .order-arrow:not(.order-arrow--preview) .oa-line::after {
+	content: none;
+	animation: none;
+}
+
+.game-page .order-arrow:not(.order-arrow--preview) .oa-head {
+	right: -1px;
+	top: 0;
+	width: 22px;
+	height: 18px;
+	border: 0;
+	clip-path: polygon(0 0, 100% 50%, 0 100%);
+	background: var(--oa-ink);
+	filter: none;
+	animation: none;
+}
+
+.game-page .order-arrow:not(.order-arrow--preview) .oa-head::after { content: none; }
+
+/* 每次新军令只播放一次由士兵端向目标端展开的动画，行军缩短时不会重播。 */
+.game-page .order-arrow--deploying:not(.order-arrow--preview) {
+	animation: orderDocumentaryDeploy .68s cubic-bezier(.22, .72, .18, 1) both;
+}
+
+@keyframes orderDocumentaryDeploy {
+	0% { opacity: .9; clip-path: inset(-6px 100% -6px -6px); }
+	100% { opacity: .9; clip-path: inset(-6px -6px -6px -6px); }
+}
+
+/* 选目标仍沿用旧的细红虚线，不套用上面的宽军势箭头。 */
+.game-page .order-arrow--preview {
+	height: 18px;
+	opacity: .9;
+	filter: drop-shadow(0 1px 1px rgba(18, 10, 8, .78));
+	animation: none;
+	transition: none;
+}
+
+.game-page .order-arrow--preview .oa-line {
+	left: 2px;
+	right: 12px;
+	top: 8px;
+	height: 2px;
+	border: 0;
+	border-radius: 0;
+	background: repeating-linear-gradient(90deg, #f05a52 0 7px, transparent 7px 12px);
+	box-shadow: none;
+}
+
+.game-page .order-arrow--preview .oa-line::before,
+.game-page .order-arrow--preview .oa-line::after { content: none; }
+
+.game-page .order-arrow--preview .oa-head {
+	right: 0;
+	top: 4px;
+	width: 0;
+	height: 0;
+	border-top: 5px solid transparent;
+	border-bottom: 5px solid transparent;
+	border-left: 11px solid #f05a52;
+	clip-path: none;
+	background: none;
+	filter: drop-shadow(0 1px 1px rgba(18, 10, 8, .72));
+	animation: none;
+}
+
+.game-page .order-arrow--preview .oa-head::after { content: none; }
+
+@media (prefers-reduced-motion: reduce) {
+	.dialog-overlay .dialog-portrait__neutral,
+	.dialog-overlay .dialog-portrait__action {
+		animation-duration: .01ms !important;
+		animation-delay: 0s !important;
+	}
+	.game-page .order-arrow--deploying:not(.order-arrow--preview) {
+		animation: none !important;
+		clip-path: none;
+	}
+}

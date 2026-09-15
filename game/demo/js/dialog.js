@@ -10,6 +10,44 @@
  * kind: 'briefing'           将该页显示为战役简报
  * actionLabel: '按钮文字'    自定义该页的按钮文字
  */
+
+/* 同一人物的静止帧与动作帧分开保存。
+ * 动作帧真正改变了手臂、腿部和表情；CSS 只负责在两帧之间完成一次过渡，
+ * 不再用整张立绘反复平移、旋转来冒充人物动作。 */
+const DIALOGUE_ACTION_PORTRAITS = {
+	napoleon: {
+		command: 'img/portraits/napoleon-command.webp',
+		resolve: 'img/portraits/napoleon-plan.webp'
+	},
+	adjutant: {
+		report: 'img/portraits/adjutant-report.webp'
+	},
+	courier: {
+		report: 'img/portraits/courier-report.webp'
+	},
+	'coalition-commander': {
+		challenge: 'img/portraits/coalition-challenge.webp'
+	}
+};
+
+function dialoguePortraitKey(source) {
+	const match = String(source || '').match(/([^/]+)\.(?:png|webp|jpe?g)$/i);
+	return match ? match[1].toLowerCase() : '';
+}
+
+function dialogueActionPortraitSource(source, action) {
+	const variants = DIALOGUE_ACTION_PORTRAITS[dialoguePortraitKey(source)];
+	if (!variants) return '';
+	if (variants[action]) return variants[action];
+	return variants.report || variants.challenge || variants.command || variants.resolve || '';
+}
+
+/* main.js 用它把本关会用到的动作帧与原立绘一起预热，避免第一句动作闪现。 */
+function dialogueActionPortraitSources(source) {
+	const variants = DIALOGUE_ACTION_PORTRAITS[dialoguePortraitKey(source)];
+	return variants ? Array.from(new Set(Object.values(variants))) : [];
+}
+
 function playDialogue(lines, onDone) {
 	if (!lines || !lines.length) { if (onDone) onDone(); return; }
 	const localize = function (value) {
@@ -38,12 +76,19 @@ function playDialogue(lines, onDone) {
 		const actor = document.createElement('div');
 		actor.className = 'dialog-portrait__actor';
 		const img = document.createElement('img');
+		img.className = 'dialog-portrait__neutral';
 		img.alt = '';
 		img.draggable = false;
+		const actionImg = document.createElement('img');
+		actionImg.className = 'dialog-portrait__action';
+		actionImg.alt = '';
+		actionImg.draggable = false;
+		actionImg.setAttribute('aria-hidden', 'true');
 		actor.appendChild(img);
+		actor.appendChild(actionImg);
 		holder.appendChild(actor);
 		overlay.appendChild(holder);
-		return { holder: holder, actor: actor, img: img, source: '' };
+		return { holder: holder, actor: actor, img: img, actionImg: actionImg, source: '', actionSource: '' };
 	}
 
 	const portraits = {
@@ -100,13 +145,22 @@ function playDialogue(lines, onDone) {
 	overlay.appendChild(box);
 
 	/* 预先找到左右两侧第一次出现的立绘，让开场第一帧就能两侧站人。 */
-	lines.forEach(function (line) {
+	const actionPreloads = [];
+	lines.forEach(function (line, index) {
 		const side = line.side === 'right' ? 'right' : 'left';
 		if (line.portrait && !portraits[side].source) {
 			portraits[side].source = line.portrait;
 			portraits[side].img.src = line.portrait;
 			portraits[side].img.alt = localize(line.who) || translate('dialogue.character', '剧情人物');
 			portraits[side].holder.classList.remove('is-empty');
+		}
+		const actionSource = dialogueActionPortraitSource(line.portrait, inferPortraitAction(line, index));
+		if (actionSource && !actionPreloads.some(function (image) { return image.src.indexOf(actionSource) !== -1; })) {
+			const image = new Image();
+			image.decoding = 'async';
+			image.src = actionSource;
+			actionPreloads.push(image);
+			if (typeof image.decode === 'function') image.decode().catch(function () { /* load 事件仍可继续 */ });
 		}
 	});
 
@@ -131,6 +185,7 @@ function playDialogue(lines, onDone) {
 		const side = line.side === 'right' ? 'right' : 'left';
 		const isBriefing = line.kind === 'briefing';
 		const pendingMotions = [];
+		const action = inferPortraitAction(line, j);
 
 		if (line.portrait) {
 			portraits[side].source = line.portrait;
@@ -141,42 +196,56 @@ function playDialogue(lines, onDone) {
 		refreshPortraitIdentity('left');
 		refreshPortraitIdentity('right');
 
-		const action = inferPortraitAction(line, j);
 		['left', 'right'].forEach(function (position) {
-			const holder = portraits[position].holder;
+			const portrait = portraits[position];
+			const holder = portrait.holder;
 			const speaking = !isBriefing && position === side;
 			holder.classList.toggle('is-speaking', speaking);
 			holder.classList.toggle('is-listening', isBriefing || position !== side);
-			holder.classList.remove('is-gesturing', 'is-reacting', 'is-action-command', 'is-action-report', 'is-action-challenge', 'is-action-resolve');
+			holder.classList.remove('is-gesturing', 'is-reacting', 'is-performing', 'is-action-command', 'is-action-report', 'is-action-challenge', 'is-action-resolve');
 			if (speaking) {
-				/* 先清掉上一句动作，刷新图片自身布局后再重新挂类。
-				 * 这样第一句与同一人物连续发言都能重新播放，而不是停在动作终点。 */
-				pendingMotions.push({ holder: holder, classes: ['is-gesturing', 'is-action-' + action] });
-			} else if (!holder.classList.contains('is-empty')) {
-				pendingMotions.push({ holder: holder, classes: ['is-reacting'] });
+				portrait.actionSource = dialogueActionPortraitSource(portrait.source, action);
+				if (portrait.actionSource) {
+					if (portrait.actionImg.getAttribute('src') !== portrait.actionSource) {
+						portrait.actionImg.src = portrait.actionSource;
+					}
+					holder.dataset.actionFrame = portrait.actionSource;
+					pendingMotions.push({
+						holder: holder,
+						actor: portrait.actor,
+						actionImg: portrait.actionImg,
+						classes: ['is-gesturing', 'is-performing', 'is-action-' + action]
+					});
+				} else {
+					delete holder.dataset.actionFrame;
+				}
 			}
 		});
 
 		const tick = ++motionTick;
-		/* 动画挂在独立 actor 层上：立绘图片本身不再同时争抢 transform。
-		 * 每句先读一次 actor 布局，再重新挂动作类；这样开场第一句、连续由
-		 * 拿破仑发言以及翻页后，动作都会从第 0 帧重新开始。 */
+		/* 动作图片解码完成后才开始换帧，静止帧会一直保留到那一刻。
+		 * 每句都先移除 is-performing，再强制布局并挂回，保证连续发言也会
+		 * 从静止姿态做一次完整动作；动作结束后停在新姿态，不循环摇摆。 */
 		pendingMotions.forEach(function (motion) {
-			const actor = motion.holder.querySelector('.dialog-portrait__actor');
-			if (actor) void actor.offsetWidth;
-			motion.holder.classList.add.apply(motion.holder.classList, motion.classes);
-			if (actor) void actor.offsetWidth;
-			/* 现代浏览器显式把循环动作拨回 0 秒；旧浏览器仍由强制布局启动。 */
-			if (actor && typeof actor.getAnimations === 'function') {
-				actor.getAnimations().forEach(function (animation) {
-					animation.cancel();
-					animation.play();
+			const begin = function () {
+				if (tick !== motionTick || !document.body.contains(overlay)) return;
+				void motion.actor.offsetWidth;
+				motion.holder.classList.add.apply(motion.holder.classList, motion.classes);
+			};
+			if (motion.actionImg.complete && motion.actionImg.naturalWidth > 0) {
+				begin();
+			} else if (typeof motion.actionImg.decode === 'function') {
+				motion.actionImg.decode().then(begin).catch(function () {
+					motion.actionImg.addEventListener('load', begin, { once: true });
 				});
+			} else {
+				motion.actionImg.addEventListener('load', begin, { once: true });
 			}
 		});
 		overlay.dataset.motionTick = String(tick);
 		overlay.dataset.speaker = localize(line.who);
 		overlay.dataset.speakerAction = action;
+		overlay.dataset.motionMode = pendingMotions.length ? 'pose-frame' : 'still';
 
 		overlay.dataset.scene = line.scene || 'campaign';
 		box.classList.toggle('dialog-box--briefing', isBriefing);

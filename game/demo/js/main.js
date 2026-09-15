@@ -2877,21 +2877,22 @@ function upsertOrderArrow(
 			item;
 	}
 
-	/* 只有“新下达/改换目标”的军令才重新播放铺展动画。
-	 * 棋子在后续回合向目标移动时，箭头会随当前位置缩短，但不能每步都闪回重播。 */
-	if (item.commandSignature !== commandSignature) {
-		item.commandSignature = commandSignature;
-		item.el.classList.remove('order-arrow--deploying');
-		/* 强制提交一次无动画状态，随后重新加类，确保同一棋子改令时也从起点画到终点。 */
-		void item.el.offsetWidth;
-		item.el.classList.add('order-arrow--deploying');
-	}
+	const isNewCommand = item.commandSignature !== commandSignature;
 
 	if (!positionOrderArrow(item.el, x1, y1, x2, y2)) {
 
 		removeOrderArrow(id);
 
 		return;
+	}
+
+	/* 先写入起点、终点和长度，再启动由士兵端向目标端的铺展。
+	 * 旧版在几何尺寸写入前就启动动画，首帧可能按 0 宽计算，视觉上像整根闪现。 */
+	if (isNewCommand) {
+		item.commandSignature = commandSignature;
+		item.el.classList.remove('order-arrow--deploying');
+		void item.el.offsetWidth;
+		item.el.classList.add('order-arrow--deploying');
 	}
 }
 
@@ -3151,7 +3152,13 @@ function warmIntroImage(src) {
 }
 
 function warmLevelIntroAssets(meta) {
-	(meta.story || []).forEach(function (line) { if (line.portrait) warmIntroImage(line.portrait); });
+	(meta.story || []).forEach(function (line) {
+		if (!line.portrait) return;
+		warmIntroImage(line.portrait);
+		if (typeof dialogueActionPortraitSources === 'function') {
+			dialogueActionPortraitSources(line.portrait).forEach(warmIntroImage);
+		}
+	});
 	if (Number(CURRENT_LEVEL_ID) === 1) {
 		warmIntroImage('./img/level1-intro-1.webp');
 		warmIntroImage('./img/level1-intro-2.webp');
