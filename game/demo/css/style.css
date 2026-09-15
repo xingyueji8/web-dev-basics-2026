@@ -2333,6 +2333,10 @@ body.dialogue-active { overflow: hidden; }
 	z-index: 3;
 	width: 0;
 	height: 0;
+	padding: 0;
+	border: 0;
+	background: none;
+	font: inherit;
 	color: var(--ui-navy-900);
 	text-decoration: none;
 	cursor: pointer;
@@ -2441,6 +2445,62 @@ body.dialogue-active { overflow: hidden; }
    上面那条 +0.05em 的补偿是按正体调的，斜体要往左补一点，中间那颗星才落在图钉正下方。 */
 .map-pin--hidden .map-pin__stars { font-style: italic; color: #7a5c33; transform: translateX(calc(-50% - 0.03em)); }
 
+/* 未解锁的第 7 关仍作为情报节点显示：数字保留，右上角叠加小锁，
+   下方用紧凑铭牌显示主线总星数，点击或键盘聚焦均可读取完整条件。 */
+.map-pin--locked { cursor: not-allowed; }
+.map-pin--locked .map-pin__dot {
+	border-color: #81765f;
+	background: linear-gradient(145deg, #e8e0cf, #bcb19d);
+	color: #514a3e;
+	box-shadow: 0 3px 9px rgba(34, 28, 20, 0.28);
+	animation: none;
+}
+.map-pin--locked .map-pin__dot::after { border-top-color: #81765f; }
+.map-pin--locked:hover .map-pin__dot {
+	transform: translate(-50%, -50%);
+	background: linear-gradient(145deg, #e8e0cf, #bcb19d);
+	color: #514a3e;
+}
+.map-pin--locked:focus-visible .map-pin__dot {
+	outline: 3px solid rgba(185, 154, 85, 0.48);
+	outline-offset: 3px;
+}
+.map-pin__lock {
+	position: absolute;
+	z-index: 4;
+	left: 8px;
+	top: -17px;
+	width: 11px;
+	height: 9px;
+	border: 1.5px solid #625844;
+	border-radius: 2px;
+	background: #c8b98f;
+	box-shadow: 0 1px 3px rgba(24, 19, 12, 0.35);
+}
+.map-pin__lock::before {
+	content: '';
+	position: absolute;
+	left: 1px;
+	top: -7px;
+	width: 6px;
+	height: 7px;
+	border: 1.5px solid #625844;
+	border-bottom: 0;
+	border-radius: 6px 6px 0 0;
+}
+.map-pin--locked .map-pin__stars {
+	top: 23px;
+	padding: 2px 6px;
+	border: 1px solid rgba(98, 88, 68, 0.42);
+	border-radius: 999px;
+	background: rgba(255, 250, 240, 0.88);
+	color: #514a3e;
+	font-size: 0.78rem;
+	font-style: normal;
+	letter-spacing: 0.02em;
+	transform: translateX(-50%);
+}
+
 /* 刚从结算页回来：延伸动画还没跑完时，新标记先藏着（跑完由 JS 换成 --fresh 弹出来） */
 .map-pin--wait { opacity: 0; visibility: hidden; }
 
@@ -2463,6 +2523,8 @@ body.dialogue-active { overflow: hidden; }
 	.map-pin__dot { width: 22px; height: 22px; font-size: 0.72rem; }
 	.map-pin__stars { top: 19px; font-size: 0.8rem; letter-spacing: 0.06em; transform: translateX(calc(-50% + 0.03em)); }
 	.map-pin--hidden .map-pin__stars { transform: translateX(calc(-50% - 0.11em)); }
+	.map-pin--locked .map-pin__stars { top: 20px; font-size: 0.68rem; letter-spacing: 0; transform: translateX(-50%); }
+	.map-pin__lock { left: 7px; top: -15px; transform: scale(0.9); }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -3311,6 +3373,30 @@ body.page-menu {
 
 .campaign-map-shell .map-pin--open .map-pin__dot::after,
 .campaign-map-shell .map-pin--cont .map-pin__dot::after { border-top-color: #e0c177; }
+
+.campaign-map-shell .map-pin--locked .map-pin__dot {
+	color: #a99f8b;
+	border-color: rgba(180, 166, 132, 0.72);
+	background: linear-gradient(145deg, #34404a, #151d24);
+	box-shadow: 0 6px 16px rgba(0, 0, 0, 0.52), inset 0 1px rgba(255, 255, 255, 0.12);
+}
+.campaign-map-shell .map-pin--locked .map-pin__dot::after { border-top-color: rgba(180, 166, 132, 0.72); }
+.campaign-map-shell .map-pin--locked:hover .map-pin__dot {
+	color: #a99f8b;
+	background: linear-gradient(145deg, #34404a, #151d24);
+}
+.campaign-map-shell .map-pin--locked .map-pin__stars {
+	color: #e4d3a3;
+	border-color: rgba(221, 199, 139, 0.34);
+	background: rgba(7, 16, 24, 0.82);
+	text-shadow: 0 1px 3px #02070b;
+}
+.campaign-map-shell .map-pin__lock {
+	border-color: #d0ba7e;
+	background: #76643c;
+	box-shadow: 0 1px 4px rgba(0, 0, 0, 0.62);
+}
+.campaign-map-shell .map-pin__lock::before { border-color: #d0ba7e; }
 
 #btn-saves {
 	margin: 0.1rem auto 0;

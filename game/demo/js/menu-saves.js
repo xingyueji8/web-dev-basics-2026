@@ -3,12 +3,13 @@
  * 负责：
  *   页面上  —— 战役地图 #campaign-map：底图 img/europe-map.svg 上按 levels.js 的 map{lon,lat}
  *                摆旗标（关号 + 下方星级 / 进行中 / 隐藏关；完整关名在 title 里），
- *                **只画到"已解锁到的关卡"**（后面的不出现，打到哪长到哪）；
+ *                普通关只画到"已解锁到的关卡"（后面的不出现，打到哪长到哪）；
+ *                第 7 关例外：始终作为带锁情报点显示，并标注第 1～6 关的总星数 /18；
  *                已通关的段 = 绛红弧形推进箭头，还没打通的下一段 = 金灰预告箭头；
  *                刚解锁了一关时，下一段先"延伸"到终点，跑完才放出下一关的标记
  *                —— 判据是主界面自己记的 revealSeen:<用户>（见 readRevealSeen），
  *                ?unlock=N 只作为兼容 / 手动重放。
- *                旗标就是关卡入口（隐藏关只在 hiddenRouteOpen() 为真时出现）。
+ *                旗标就是关卡入口（第 7 关满 18 星后去锁并开放入口）。
  *              （2026-09 第 4 版起页面上的 #save-note"已通关 N 关"摘要与地图下方的小字已删除）
  *   弹窗里  —— 点 #btn-saves 打开的卡片（复用 css 的 .ui-modal-mask / .ui-modal）：
  *              手动备份 存档1~3 的「载入 / 删除」（每行都写明该档的进度与星级；
@@ -35,6 +36,18 @@
 
 	function localText(value) {
 		return (typeof uiLocalize === 'function') ? uiLocalize(value) : String(value || '');
+	}
+
+	function message(key, vars, fallback) {
+		return (typeof uiT === 'function') ? uiT(key, vars, fallback) : fallback;
+	}
+
+	function mainRouteStars(stars) {
+		var total = 0;
+		for (var level = 1; level <= 6; level++) {
+			total += Math.max(0, Math.min(3, Number((stars || {})['' + level]) || 0));
+		}
+		return total;
 	}
 
 	function starsText(s) {
@@ -98,7 +111,7 @@
 	   这样连线连到锚点时正好落在圆点中心，不会看着歪。 */
 	function buildPin(entry) {
 		var pos = mapPos(entry.map);
-		var el = document.createElement(entry.href ? 'a' : 'span');
+		var el = document.createElement(entry.href ? 'a' : (entry.locked ? 'button' : 'span'));
 		el.className = 'map-pin map-pin--' + entry.state +
 			(entry.hidden ? ' map-pin--hidden' : '') +
 			(entry.fresh ? ' map-pin--wait' : '');
@@ -108,6 +121,13 @@
 		if (entry.href) {
 			el.href = entry.href;
 		}
+		if (entry.locked) {
+			el.type = 'button';
+			el.setAttribute('aria-label', entry.title);
+			el.addEventListener('click', function () {
+				if (typeof toast === 'function') toast(entry.title, 3600);
+			});
+		}
 		var dot = document.createElement('span');
 		dot.className = 'map-pin__dot';
 		dot.textContent = entry.no;
@@ -115,6 +135,12 @@
 		stars.className = 'map-pin__stars';
 		stars.textContent = entry.starsText;
 		el.appendChild(dot);
+		if (entry.locked) {
+			var lock = document.createElement('span');
+			lock.className = 'map-pin__lock';
+			lock.setAttribute('aria-hidden', 'true');
+			el.appendChild(lock);
+		}
 		el.appendChild(stars);
 		el.dataset.level = entry.no;
 		el.dataset.state = entry.state;
@@ -192,9 +218,12 @@
 		appendArrowMarker(styleDefs, 'route-arrow-draw', '#f08a78');
 		svg.appendChild(styleDefs);
 		for (var i = 0; i < entries.length - 1; i++) {
+			/* 锁定的第 7 关始终显示，但第 6 关尚未出现在地图上时保持为孤立情报点，
+			   避免从第 1～5 关直接跨越整张地图连到滑铁卢。 */
+			if (entries[i + 1].locked && Number(entries[i].no) !== 6) continue;
 			var a = mapUnits(entries[i].map), b = mapUnits(entries[i + 1].map);
 			var d = routeCurve(a, b, i);
-			var done = entries[i].stars > 0;
+			var done = entries[i].stars > 0 && !entries[i + 1].locked;
 			var isNew = done && unlockId !== null && Number(entries[i].no) === Number(unlockId);
 			var pendingClass = isNew ? ' map-route__line--pending' : '';
 			appendRoutePath(svg, d,
@@ -270,22 +299,25 @@
 			});
 		});
 
-		// —— 隐藏关：第 1~6 关全 3 星开启路线后才出现标记；没通关第 6 关时是"？？？"（沿用原规则）——
-		if (typeof hiddenRouteOpen === 'function' && hiddenRouteOpen()) {
-			var hm = (typeof getHiddenLevel === 'function') ? getHiddenLevel() : null;
-			if (hm && hm.map) {
-				var lv6ok = (typeof hasBeatenLevel === 'function') ? hasBeatenLevel(user, 6) : false;
-				var hs7 = Number(auto.stars['7']) || 0;
-				var hcont = !!(auto.snapshot && Number(auto.snapshot.level) === 7);
-				entries.push({
-					no: 7, map: hm.map, stars: hs7, cont: hcont, hidden: true,
-					state: hcont ? 'cont' : (hs7 > 0 ? 'done' : 'open'),
-					starsText: lv6ok ? mapStars(hs7) : '？？？',
-					title: lv6ok ? (localText(hm.name) + '（隐藏关）') : '隐藏关 —— 需第 1~6 关全部 3 星且通关第 6 关',
-					href: lv6ok ? (hm.file + (hcont ? '?resume=1' : '')) : '',
-					fresh: false
-				});
-			}
+		// —— 第 7 关始终显示：未满 18 星时带锁并显示主线星级进度；满星后恢复为可进入节点。——
+		var hm = (typeof getHiddenLevel === 'function') ? getHiddenLevel() : null;
+		if (hm && hm.map) {
+			var starState = auto.stars || {};
+			var routeStars = mainRouteStars(starState);
+			var routeOpen = (typeof hiddenRouteOpen === 'function') && hiddenRouteOpen();
+			var hs7 = Number(starState['7']) || 0;
+			var hcont = !!(auto.snapshot && Number(auto.snapshot.level) === 7);
+			var progressText = message('menu.level7Progress', { current: routeStars }, routeStars + '/18 星');
+			var lockedTitle = message('menu.level7LockedTitle', { current: routeStars },
+				'第 7 关尚未解锁：当前 ' + routeStars + '/18 星；第 1～6 关全部获得 3 星后开启。');
+			entries.push({
+				no: 7, map: hm.map, stars: hs7, cont: hcont, hidden: true, locked: !routeOpen,
+				state: routeOpen ? (hcont ? 'cont' : (hs7 > 0 ? 'done' : 'open')) : 'locked',
+				starsText: routeOpen ? mapStars(hs7) : progressText,
+				title: routeOpen ? (localText(hm.name) + '（隐藏关）') : lockedTitle,
+				href: routeOpen ? (hm.file + (hcont ? '?resume=1' : '')) : '',
+				fresh: false
+			});
 		}
 
 		// —— 重绘：先连线（在底图之上、标记之下），再标记 ——
@@ -513,4 +545,5 @@
 	window.bindMenuRestart = bindMenuRestart;
 	window.openSaveModal = openSaveModal;
 	window.closeSaveModal = closeSaveModal;
+	window.addEventListener('ui:languagechange', renderMenuSaves);
 })();
