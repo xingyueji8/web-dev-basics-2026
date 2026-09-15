@@ -4826,8 +4826,10 @@ html[data-theme='dark'] body.page-group {
 /* transform 只交给 actor，避免旧的 img 动画与新动作互相覆盖。 */
 .dialog-overlay .dialog-portrait.is-speaking.is-gesturing img,
 .dialog-overlay .dialog-portrait.is-listening.is-reacting img {
-	animation: none !important;
-	transform: none !important;
+	/* 只重置旧版的单图摇晃；保持普通优先级，让文件末尾的真实姿态帧
+	   可以接管 animation/transform。 */
+	animation: none;
+	transform: none;
 }
 
 .dialog-overlay .dialog-portrait--left.is-speaking.is-action-command .dialog-portrait__actor {
