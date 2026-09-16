@@ -1,6 +1,6 @@
-/* 红蓝联机会战：PeerJS 只负责 WebRTC 信令，战局数据经浏览器 DataChannel 点对点传输。
- * 房主（蓝方）是权威端：红方只发送本轮军令，房主执行同一套 24 帧结算后广播战局，
- * 避免双方浮点误差或同时操作导致状态分叉。房间不会写入战役存档。 */
+/* 红蓝会战使用浏览器原生 WebRTC DataChannel，iceServers 为空，不加载外部联机库、
+ * 信令服务、STUN 或 TURN。双方手动交换一次邀请 / 应答凭证即可在可直连的局域网中通信。
+ * 蓝方是权威端：红方发送军令，蓝方执行同一套 24 帧结算后广播战局。 */
 (function () {
 	'use strict';
 
@@ -20,15 +20,24 @@
 		rule2: { 'zh-CN': '双方轮流行动；一轮内可给任意数量己方棋子下令，再统一结束行动。', en: 'Players alternate. During your turn, issue orders to any number of your units, then end the action.' },
 		rule3: { 'zh-CN': '不限制回合。先歼灭对方全军者获胜；计时结束时存活棋子更多者获胜。', en: 'There is no turn limit. Eliminate the enemy first, or have more surviving units when time expires.' },
 		rule4: { 'zh-CN': '双方使用同一份公平编制；同数存活时，以剩余生命比例裁决，再相同则平局。', en: 'Both sides use one fair force template. Equal survivors are settled by remaining health ratio, then a draw.' },
-		networkNote: { 'zh-CN': '连接使用浏览器 WebRTC 点对点数据通道；房间仅在双方页面保持打开时存在。', en: 'The match uses a browser WebRTC peer-to-peer data channel. The room exists only while both pages stay open.' },
+		networkNote: { 'zh-CN': '零外链模式：不连接第三方联机服务。双方需处于可直连的同一局域网，并保持页面打开；两台完全无网络通路的设备无法互传数据。', en: 'Zero-external-link mode: no third-party multiplayer service is contacted. Both devices need a directly reachable LAN path and must keep this page open.' },
+		offlinePreparing: { 'zh-CN': '正在准备离线资源；首次在线缓存完成后，断开互联网仍可重新进入联机会战。', en: 'Preparing offline resources. Once the first online cache completes, you can reopen multiplayer without internet.' },
+		offlineReady: { 'zh-CN': '离线资源已就绪：断开互联网后仍可重新进入；双方仍须保持同一局域网通路。', en: 'Offline resources are ready. You can reopen without internet; both devices still need a shared LAN path.' },
+		offlineUnavailable: { 'zh-CN': '当前浏览器未完成离线缓存；本次对局仍不使用外链，离线前请保持页面打开。', en: 'This browser could not finish offline caching. This match still uses no external links; keep the page open before going offline.' },
 		hostTitle: { 'zh-CN': '创建房间 · 蓝方', en: 'Create Room · Blue' },
-		hostCopy: { 'zh-CN': '由你设置双方编制与对局时间，然后把六位房间码发给对手。', en: 'Set the shared force and match time, then send the six-character room code to your opponent.' },
-		create: { 'zh-CN': '创建房间', en: 'Create Room' },
+		hostCopy: { 'zh-CN': '生成蓝方邀请凭证发给对手；收到红方应答后粘贴确认。凭证只包含本次浏览器直连信息。', en: 'Generate a Blue invitation for your opponent, then paste their Red response to connect. Credentials contain only this direct browser session.' },
+		create: { 'zh-CN': '生成蓝方邀请', en: 'Generate Blue Invitation' },
 		joinTitle: { 'zh-CN': '加入房间 · 红方', en: 'Join Room · Red' },
-		joinCopy: { 'zh-CN': '输入房主发来的六位房间码，连接后确认同一份编制。', en: 'Enter the host\'s six-character code, then confirm the shared force.' },
-		join: { 'zh-CN': '加入房间', en: 'Join Room' },
-		roomCode: { 'zh-CN': '房间码', en: 'Room Code' },
-		copy: { 'zh-CN': '复制邀请', en: 'Copy Invite' },
+		joinCopy: { 'zh-CN': '粘贴蓝方邀请并生成红方应答，再把应答凭证发回蓝方。整个过程无需联机服务器。', en: 'Paste Blue\'s invitation, generate a Red response, and return it to Blue. No multiplayer server is used.' },
+		join: { 'zh-CN': '生成红方应答', en: 'Generate Red Response' },
+		roomCode: { 'zh-CN': '会战编号', en: 'Engagement ID' },
+		offerLabel: { 'zh-CN': '① 把蓝方邀请凭证发给红方', en: '1. Send the Blue invitation to Red' },
+		copyOffer: { 'zh-CN': '复制蓝方邀请', en: 'Copy Blue Invitation' },
+		answerInputLabel: { 'zh-CN': '② 粘贴红方返回的应答凭证', en: '2. Paste the response returned by Red' },
+		acceptAnswer: { 'zh-CN': '确认应答并连接', en: 'Accept Response and Connect' },
+		guestOfferLabel: { 'zh-CN': '① 粘贴蓝方邀请凭证', en: '1. Paste the Blue invitation' },
+		answerLabel: { 'zh-CN': '② 把红方应答凭证发回蓝方', en: '2. Return the Red response to Blue' },
+		copyAnswer: { 'zh-CN': '复制红方应答', en: 'Copy Red Response' },
 		armyKicker: { 'zh-CN': 'FAIR FORCE TEMPLATE · 公平编制', en: 'FAIR FORCE TEMPLATE' },
 		armyTitle: { 'zh-CN': '双方共同编制', en: 'Shared Force' },
 		strength: { 'zh-CN': '军力', en: 'Power' },
@@ -41,7 +50,7 @@
 		duration: { 'zh-CN': '对局时间', en: 'Match Time' },
 		ready: { 'zh-CN': '确认编制并就绪', en: 'Confirm and Ready' },
 		cancelReady: { 'zh-CN': '取消就绪', en: 'Cancel Ready' },
-		idle: { 'zh-CN': '请选择创建或加入房间。', en: 'Create or join a room.' },
+		idle: { 'zh-CN': '无需外部服务器：请生成或粘贴本次会战的配对凭证。', en: 'No external server is required. Generate or paste this engagement\'s pairing credential.' },
 		initiative: { 'zh-CN': 'INITIATIVE · 先攻判定', en: 'INITIATIVE' },
 		diceTitle: { 'zh-CN': '命运正在掷骰', en: 'The Dice Decide' },
 		blue: { 'zh-CN': '蓝方', en: 'Blue' },
@@ -51,12 +60,15 @@
 		endTurn: { 'zh-CN': '结束本方行动', en: 'End Action' },
 		battleReport: { 'zh-CN': 'BATTLE REPORT · 战果', en: 'BATTLE REPORT' },
 		playAgain: { 'zh-CN': '再开一局', en: 'Play Again' },
-		loadingService: { 'zh-CN': '正在联络 WebRTC 信令站……', en: 'Contacting the WebRTC signaling service…' },
-		waitingOpponent: { 'zh-CN': '房间 {code} 已建立，等待红方加入。', en: 'Room {code} is open. Waiting for Red.' },
-		joining: { 'zh-CN': '正在加入房间 {code}……', en: 'Joining room {code}…' },
+		preparingOffer: { 'zh-CN': '正在由本机生成蓝方直连邀请……', en: 'Generating a direct Blue invitation on this device…' },
+		waitingAnswer: { 'zh-CN': '会战 {code} 的邀请已生成。请发给红方，再粘贴其应答。', en: 'Invitation for engagement {code} is ready. Send it to Red, then paste their response.' },
+		preparingAnswer: { 'zh-CN': '正在由本机验证邀请并生成红方应答……', en: 'Validating the invitation and generating Red\'s response on this device…' },
+		answerReady: { 'zh-CN': '红方应答已生成。请发回蓝方，并等待蓝方确认。', en: 'Red\'s response is ready. Return it to Blue and wait for confirmation.' },
+		connecting: { 'zh-CN': '应答已接受，正在建立浏览器点对点数据通道……', en: 'Response accepted. Establishing the browser peer-to-peer data channel…' },
 		connected: { 'zh-CN': '连接成功：{blue}（蓝）对 {red}（红）。双方就绪后掷骰。', en: 'Connected: {blue} (Blue) vs {red} (Red). Ready both sides to roll.' },
-		serviceFail: { 'zh-CN': '联机库加载失败。请检查网络后刷新页面；通关模式仍可离线游玩。', en: 'The online library failed to load. Check your network and refresh; Campaign remains available offline.' },
-		invalidCode: { 'zh-CN': '请输入完整的六位房间码。', en: 'Enter a complete six-character room code.' },
+		unsupportedWebRTC: { 'zh-CN': '当前浏览器不支持原生 WebRTC 数据通道，请更新 Chrome、Edge、Firefox 或 Safari。', en: 'This browser does not support native WebRTC data channels. Update Chrome, Edge, Firefox, or Safari.' },
+		invalidHandshake: { 'zh-CN': '配对凭证无效或粘贴不完整，请重新复制全部内容。', en: 'The pairing credential is invalid or incomplete. Copy and paste the entire value again.' },
+		wrongAnswer: { 'zh-CN': '这份应答不属于当前会战，请让红方使用最新邀请重新生成。', en: 'This response belongs to another engagement. Ask Red to regenerate it from the latest invitation.' },
 		connectionFail: { 'zh-CN': '连接未建立：{reason}', en: 'Connection failed: {reason}' },
 		disconnected: { 'zh-CN': '与对手的连接已断开，本局已暂停。可返回军帐重新建房。', en: 'The opponent disconnected and the match is paused. Return to the war room to create another room.' },
 		validForce: { 'zh-CN': '编制有效：双方各 {units} 支，军力 {points}/35。', en: 'Valid force: {units} units per side, power {points}/35.' },
@@ -66,8 +78,8 @@
 		readyState: { 'zh-CN': '蓝方 {blue} · 红方 {red}', en: 'Blue {blue} · Red {red}' },
 		readyYes: { 'zh-CN': '已就绪', en: 'ready' },
 		readyNo: { 'zh-CN': '未就绪', en: 'not ready' },
-		copied: { 'zh-CN': '邀请链接已复制。', en: 'Invite link copied.' },
-		copyFail: { 'zh-CN': '无法自动复制，请手动发送房间码 {code}。', en: 'Could not copy automatically. Send room code {code} manually.' },
+		copiedCredential: { 'zh-CN': '配对凭证已复制。', en: 'Pairing credential copied.' },
+		copyFail: { 'zh-CN': '无法自动复制，请长按文本框后手动复制全部凭证。', en: 'Automatic copy failed. Select and copy the entire credential manually.' },
 		blueFirst: { 'zh-CN': '蓝方以 {blue}:{red} 取得先手。', en: 'Blue wins initiative {blue}:{red}.' },
 		redFirst: { 'zh-CN': '红方以 {red}:{blue} 取得先手。', en: 'Red wins initiative {red}:{blue}.' },
 		myTurn: { 'zh-CN': '第 {turn} 轮 · 轮到你（{side}）下令', en: 'Round {turn} · Your action ({side})' },
@@ -118,7 +130,7 @@
 	var role = '';
 	var mySide = '';
 	var roomCode = '';
-	var peer = null;
+	var rtcPeer = null;
 	var connection = null;
 	var connected = false;
 	var ready = { blue: false, red: false };
@@ -130,7 +142,6 @@
 	var timerId = null;
 	var waitingForHost = false;
 	var finished = false;
-	var peerLibraryPromise = null;
 
 	var lobby = document.getElementById('mp-lobby');
 	var diceStage = document.getElementById('mp-dice');
@@ -139,9 +150,14 @@
 	var statusNode = document.getElementById('mp-status');
 	var createButton = document.getElementById('mp-create');
 	var joinButton = document.getElementById('mp-join');
-	var joinInput = document.getElementById('mp-join-code');
 	var roomShare = document.getElementById('mp-room-share');
 	var roomCodeNode = document.getElementById('mp-room-code');
+	var hostHandshake = document.getElementById('mp-host-handshake');
+	var hostOffer = document.getElementById('mp-host-offer');
+	var hostAnswer = document.getElementById('mp-host-answer');
+	var guestOffer = document.getElementById('mp-guest-offer');
+	var guestHandshake = document.getElementById('mp-guest-handshake');
+	var guestAnswer = document.getElementById('mp-guest-answer');
 	var builder = document.getElementById('mp-army-builder');
 	var readyButton = document.getElementById('mp-ready');
 	var durationSelect = document.getElementById('mp-duration');
@@ -152,39 +168,12 @@
 		statusNode.dataset.kind = kind || 'info';
 	}
 
-	function normalizeCode(value) {
-		return String(value || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
-	}
-
 	function randomCode() {
 		var alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 		var values = new Uint32Array(6);
 		if (window.crypto && window.crypto.getRandomValues) window.crypto.getRandomValues(values);
 		else for (var i = 0; i < values.length; i++) values[i] = Math.floor(Math.random() * 0xffffffff);
 		return Array.from(values).map(function (value) { return alphabet[value % alphabet.length]; }).join('');
-	}
-
-	function loadPeerLibrary() {
-		if (window.Peer) return Promise.resolve(window.Peer);
-		if (peerLibraryPromise) return peerLibraryPromise;
-		var sources = [
-			'https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js',
-			'https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js'
-		];
-		peerLibraryPromise = new Promise(function (resolve, reject) {
-			function attempt(index) {
-				if (index >= sources.length) { reject(new Error(text('serviceFail'))); return; }
-				var script = document.createElement('script');
-				script.src = sources[index];
-				script.async = true;
-				script.crossOrigin = 'anonymous';
-				script.onload = function () { if (window.Peer) resolve(window.Peer); else attempt(index + 1); };
-				script.onerror = function () { script.remove(); attempt(index + 1); };
-				document.head.appendChild(script);
-			}
-			attempt(0);
-		});
-		return peerLibraryPromise;
 	}
 
 	function forceStats(value) {
@@ -274,12 +263,11 @@
 		input.addEventListener('input', resetReadyAfterHostEdit);
 	});
 	durationSelect.addEventListener('change', resetReadyAfterHostEdit);
-	joinInput.addEventListener('input', function () { joinInput.value = normalizeCode(joinInput.value); });
 
 	function disableConnectionChoices() {
 		createButton.disabled = true;
 		joinButton.disabled = true;
-		joinInput.disabled = true;
+		guestOffer.disabled = true;
 	}
 
 	function enableBuilder() {
@@ -298,7 +286,7 @@
 			if (role === 'guest') {
 				send({ type: 'hello', name: playerName });
 			} else {
-				players.red = String((connection.metadata && connection.metadata.name) || text('red'));
+				players.red = players.red || text('red');
 				send(lobbyPayload());
 			}
 			renderLobbyState();
@@ -310,84 +298,195 @@
 		});
 	}
 
-	function peerError(error) {
+	function connectionSetupError(error) {
 		var reason = error && (error.message || error.type) ? (error.message || error.type) : String(error || 'unknown');
 		setStatus(text('connectionFail', { reason: reason }), 'error');
 		createButton.disabled = false;
 		joinButton.disabled = false;
-		joinInput.disabled = false;
+		guestOffer.disabled = false;
 	}
 
-	function createHostWithCode(code, collisionRetry) {
-		roomCode = code;
-		var id = 'napoleon-field-v1-' + code.toLowerCase();
-		peer = new window.Peer(id, { debug: 1 });
-		peer.on('open', function () {
-			roomCodeNode.textContent = roomCode;
-			roomShare.hidden = false;
-			setStatus(text('waitingOpponent', { code: roomCode }), 'waiting');
-			enableBuilder();
+	function bytesToBase64Url(bytes) {
+		var binary = '';
+		for (var offset = 0; offset < bytes.length; offset += 0x8000) {
+			binary += String.fromCharCode.apply(null, bytes.subarray(offset, offset + 0x8000));
+		}
+		return window.btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+	}
+
+	function base64UrlToBytes(value) {
+		var base64 = String(value || '').replace(/-/g, '+').replace(/_/g, '/');
+		while (base64.length % 4) base64 += '=';
+		var binary = window.atob(base64);
+		var bytes = new Uint8Array(binary.length);
+		for (var index = 0; index < binary.length; index++) bytes[index] = binary.charCodeAt(index);
+		return bytes;
+	}
+
+	function encodeCredential(kind, code, description) {
+		var payload = JSON.stringify({
+			version: 1,
+			kind: kind,
+			room: code,
+			description: { type: description.type, sdp: description.sdp }
 		});
-		peer.on('connection', bindConnection);
-		peer.on('error', function (error) {
-			if (error && error.type === 'unavailable-id' && collisionRetry < 3) {
-				try { peer.destroy(); } catch (e) { }
-				createHostWithCode(randomCode(), collisionRetry + 1);
-				return;
+		return 'NWP1.' + bytesToBase64Url(new TextEncoder().encode(payload));
+	}
+
+	function decodeCredential(value) {
+		try {
+			var compact = String(value || '').replace(/\s/g, '');
+			if (compact.slice(0, 5) !== 'NWP1.') throw new Error('prefix');
+			var payload = JSON.parse(new TextDecoder().decode(base64UrlToBytes(compact.slice(5))));
+			var description = payload && payload.description;
+			if (payload.version !== 1 || !/^[A-Z2-9]{6}$/.test(payload.room || '') ||
+				(payload.kind !== 'offer' && payload.kind !== 'answer') || !description ||
+				description.type !== payload.kind || typeof description.sdp !== 'string' || !description.sdp) {
+				throw new Error('shape');
 			}
-			peerError(error);
+			return payload;
+		} catch (error) {
+			throw new Error(text('invalidHandshake'));
+		}
+	}
+
+	function waitForIceGathering(pc) {
+		if (pc.iceGatheringState === 'complete') return Promise.resolve();
+		return new Promise(function (resolve) {
+			var timer = window.setTimeout(done, 8000);
+			function done() {
+				window.clearTimeout(timer);
+				pc.removeEventListener('icegatheringstatechange', check);
+				resolve();
+			}
+			function check() { if (pc.iceGatheringState === 'complete') done(); }
+			pc.addEventListener('icegatheringstatechange', check);
 		});
 	}
 
-	createButton.addEventListener('click', function () {
+	function createNativePeer() {
+		if (typeof window.RTCPeerConnection !== 'function') throw new Error(text('unsupportedWebRTC'));
+		var pc = new window.RTCPeerConnection({ iceServers: [] });
+		pc.addEventListener('connectionstatechange', function () {
+			if (pc.connectionState === 'failed') {
+				if (connected) handleDisconnect();
+				else connectionSetupError(new Error('WebRTC ' + pc.connectionState));
+			}
+		});
+		return pc;
+	}
+
+	function adaptDataChannel(channel) {
+		var handlers = { open: [], data: [], close: [], error: [] };
+		function emit(name, value) { handlers[name].slice().forEach(function (handler) { handler(value); }); }
+		channel.addEventListener('open', function () { emit('open'); });
+		channel.addEventListener('message', function (event) {
+			try { emit('data', JSON.parse(event.data)); }
+			catch (error) { /* 丢弃非本游戏协议数据。 */ }
+		});
+		channel.addEventListener('close', function () { emit('close'); });
+		channel.addEventListener('error', function (event) { emit('error', event.error || event); });
+		var adapter = {
+			send: function (payload) { channel.send(JSON.stringify(payload)); },
+			close: function () { channel.close(); },
+			on: function (name, handler) { if (handlers[name]) handlers[name].push(handler); }
+		};
+		Object.defineProperty(adapter, 'open', { get: function () { return channel.readyState === 'open'; } });
+		return adapter;
+	}
+
+	function bindDataChannel(channel) {
+		channel.binaryType = 'arraybuffer';
+		bindConnection(adaptDataChannel(channel));
+	}
+
+	function closeRtcPeer() {
+		try { if (connection) connection.close(); } catch (error) { }
+		try { if (rtcPeer) rtcPeer.close(); } catch (error) { }
+		connection = null;
+		rtcPeer = null;
+		connected = false;
+	}
+
+	function copyCredential(field) {
+		var value = field.value;
+		var copied = false;
+		var task;
+		if (navigator.clipboard && navigator.clipboard.writeText) {
+			task = navigator.clipboard.writeText(value).then(function () { copied = true; });
+		} else task = Promise.resolve();
+		return task.catch(function () { }).then(function () {
+			if (!copied && field.select) {
+				field.select();
+				try { copied = !!document.execCommand && document.execCommand('copy'); } catch (error) { copied = false; }
+			}
+			if (typeof toast === 'function') toast(text(copied ? 'copiedCredential' : 'copyFail'));
+		});
+	}
+
+	createButton.addEventListener('click', async function () {
 		role = 'host';
 		mySide = 'blue';
-		players.blue = playerName;
+		roomCode = randomCode();
+		players = { blue: playerName, red: '' };
 		disableConnectionChoices();
-		setStatus(text('loadingService'), 'waiting');
-		loadPeerLibrary().then(function () { createHostWithCode(randomCode(), 0); }).catch(function () {
-			setStatus(text('serviceFail'), 'error');
-			createButton.disabled = false;
-			joinButton.disabled = false;
-			joinInput.disabled = false;
-		});
+		setStatus(text('preparingOffer'), 'waiting');
+		try {
+			closeRtcPeer();
+			rtcPeer = createNativePeer();
+			bindDataChannel(rtcPeer.createDataChannel('napoleon-field', { ordered: true }));
+			await rtcPeer.setLocalDescription(await rtcPeer.createOffer());
+			await waitForIceGathering(rtcPeer);
+			hostOffer.value = encodeCredential('offer', roomCode, rtcPeer.localDescription);
+			hostAnswer.value = '';
+			roomCodeNode.textContent = roomCode;
+			roomShare.hidden = false;
+			hostHandshake.hidden = false;
+			enableBuilder();
+			setStatus(text('waitingAnswer', { code: roomCode }), 'waiting');
+		} catch (error) { closeRtcPeer(); connectionSetupError(error); }
 	});
 
-	joinButton.addEventListener('click', function () {
-		var code = normalizeCode(joinInput.value);
-		if (code.length !== 6) { setStatus(text('invalidCode'), 'error'); joinInput.focus(); return; }
+	joinButton.addEventListener('click', async function () {
+		var invitation;
+		try { invitation = decodeCredential(guestOffer.value); }
+		catch (error) { setStatus(error.message, 'error'); guestOffer.focus(); return; }
+		if (invitation.kind !== 'offer') { setStatus(text('invalidHandshake'), 'error'); return; }
 		role = 'guest';
 		mySide = 'red';
-		roomCode = code;
-		players.red = playerName;
+		roomCode = invitation.room;
+		players = { blue: text('blue'), red: playerName };
 		disableConnectionChoices();
-		setStatus(text('joining', { code: code }), 'waiting');
-		loadPeerLibrary().then(function () {
-			peer = new window.Peer(undefined, { debug: 1 });
-			peer.on('open', function () {
-				var hostId = 'napoleon-field-v1-' + code.toLowerCase();
-				bindConnection(peer.connect(hostId, { reliable: true, metadata: { name: playerName } }));
-			});
-			peer.on('error', peerError);
-		}).catch(function () {
-			setStatus(text('serviceFail'), 'error');
-			createButton.disabled = false;
-			joinButton.disabled = false;
-			joinInput.disabled = false;
-		});
+		setStatus(text('preparingAnswer'), 'waiting');
+		try {
+			closeRtcPeer();
+			rtcPeer = createNativePeer();
+			rtcPeer.addEventListener('datachannel', function (event) { bindDataChannel(event.channel); });
+			await rtcPeer.setRemoteDescription(invitation.description);
+			await rtcPeer.setLocalDescription(await rtcPeer.createAnswer());
+			await waitForIceGathering(rtcPeer);
+			guestAnswer.value = encodeCredential('answer', roomCode, rtcPeer.localDescription);
+			guestHandshake.hidden = false;
+			setStatus(text('answerReady'), 'waiting');
+		} catch (error) { closeRtcPeer(); connectionSetupError(error); }
 	});
 
-	document.getElementById('mp-copy').addEventListener('click', function () {
-		var url = new URL(window.location.href);
-		url.search = '';
-		url.searchParams.set('room', roomCode);
-		var invite = text('title') + ' · ' + text('roomCode') + ' ' + roomCode + '\n' + url.toString();
-		if (navigator.clipboard && navigator.clipboard.writeText) {
-			navigator.clipboard.writeText(invite).then(function () {
-				if (typeof toast === 'function') toast(text('copied'));
-			}).catch(function () { if (typeof toast === 'function') toast(text('copyFail', { code: roomCode })); });
-		} else if (typeof toast === 'function') toast(text('copyFail', { code: roomCode }));
+	document.getElementById('mp-accept-answer').addEventListener('click', async function () {
+		var response;
+		try { response = decodeCredential(hostAnswer.value); }
+		catch (error) { setStatus(error.message, 'error'); hostAnswer.focus(); return; }
+		if (role !== 'host' || !rtcPeer || response.kind !== 'answer') {
+			setStatus(text('invalidHandshake'), 'error'); return;
+		}
+		if (response.room !== roomCode) { setStatus(text('wrongAnswer'), 'error'); return; }
+		this.disabled = true;
+		setStatus(text('connecting'), 'waiting');
+		try { await rtcPeer.setRemoteDescription(response.description); }
+		catch (error) { this.disabled = false; connectionSetupError(error); }
 	});
+
+	document.getElementById('mp-copy-offer').addEventListener('click', function () { copyCredential(hostOffer); });
+	document.getElementById('mp-copy-answer').addEventListener('click', function () { copyCredential(guestAnswer); });
 
 	readyButton.addEventListener('click', function () {
 		if (!connected || !renderForceValidation()) return;
@@ -974,13 +1073,29 @@
 	window.addEventListener('ui:languagechange', renderLanguage);
 	window.addEventListener('beforeunload', function () {
 		try { if (connection) connection.close(); } catch (e) { }
-		try { if (peer) peer.destroy(); } catch (e) { }
+		try { if (rtcPeer) rtcPeer.close(); } catch (e) { }
 	});
 
-	var invitedCode = normalizeCode(new URLSearchParams(window.location.search).get('room'));
-	if (invitedCode.length === 6) {
-		joinInput.value = invitedCode;
-		window.setTimeout(function () { joinButton.click(); }, 360);
+	if ('serviceWorker' in navigator && window.location.protocol !== 'file:') {
+		window.addEventListener('load', function () {
+			var offlineState = document.getElementById('mp-offline-state');
+			navigator.serviceWorker.register('offline-sw.js', { scope: './' }).then(function () {
+				return navigator.serviceWorker.ready;
+			}).then(function () {
+				offlineState.dataset.mpI18n = 'offlineReady';
+				offlineState.textContent = text('offlineReady');
+				offlineState.dataset.ready = 'true';
+			}).catch(function () {
+				offlineState.dataset.mpI18n = 'offlineUnavailable';
+				offlineState.textContent = text('offlineUnavailable');
+				offlineState.dataset.ready = 'false';
+			});
+		});
+	} else {
+		var offlineState = document.getElementById('mp-offline-state');
+		offlineState.dataset.mpI18n = 'offlineUnavailable';
+		offlineState.textContent = text('offlineUnavailable');
+		offlineState.dataset.ready = 'false';
 	}
 
 	config = readForceInputs();

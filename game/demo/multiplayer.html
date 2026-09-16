@@ -4,7 +4,7 @@
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>联机军帐 - 拿破仑战争</title>
-	<link rel="stylesheet" href="css/style.css?v=20260915-command2">
+	<link rel="stylesheet" href="css/style.css?v=20260916-offline1">
 	<link rel="icon" type="image/svg+xml" href="./favicon.svg">
 </head>
 <body class="page-multiplayer" data-title-i18n="site.title">
@@ -31,7 +31,8 @@
 					<li data-mp-i18n="rule3">不限制回合。先歼灭对方全军者获胜；计时结束时存活棋子更多者获胜。</li>
 					<li data-mp-i18n="rule4">双方使用同一份公平编制；同数存活时，以剩余生命比例裁决，再相同则平局。</li>
 				</ol>
-				<p class="mp-network-note" data-mp-i18n="networkNote">连接使用浏览器 WebRTC 点对点数据通道；房间仅在双方页面保持打开时存在。</p>
+				<p class="mp-network-note" data-mp-i18n="networkNote">零外链模式：不连接第三方联机服务。双方需处于可直连的同一局域网，并保持页面打开。</p>
+				<p id="mp-offline-state" class="mp-offline-state" data-mp-i18n="offlinePreparing" role="status">正在准备离线资源；首次在线缓存完成后，断开互联网仍可重新进入联机会战。</p>
 			</div>
 
 			<div class="mp-setup">
@@ -39,21 +40,30 @@
 					<section class="mp-connect-card mp-connect-card--blue">
 						<span class="mp-faction-dot" aria-hidden="true"></span>
 						<h3 data-mp-i18n="hostTitle">创建房间 · 蓝方</h3>
-						<p data-mp-i18n="hostCopy">由你设置双方编制与对局时间，然后把六位房间码发给对手。</p>
-						<button id="mp-create" class="game-btn" type="button" data-mp-i18n="create">创建房间</button>
+						<p data-mp-i18n="hostCopy">生成蓝方邀请凭证发给对手；收到红方应答后粘贴确认。凭证只包含本次浏览器直连信息。</p>
+						<button id="mp-create" class="game-btn" type="button" data-mp-i18n="create">生成蓝方邀请</button>
 						<div id="mp-room-share" class="mp-room-share" hidden>
-							<span data-mp-i18n="roomCode">房间码</span>
+							<span data-mp-i18n="roomCode">会战编号</span>
 							<strong id="mp-room-code">——</strong>
-							<button id="mp-copy" class="mp-copy" type="button" data-mp-i18n="copy">复制邀请</button>
+						</div>
+						<div id="mp-host-handshake" class="mp-handshake" hidden>
+							<label><span data-mp-i18n="offerLabel">① 把蓝方邀请凭证发给红方</span><textarea id="mp-host-offer" readonly spellcheck="false"></textarea></label>
+							<button id="mp-copy-offer" class="mp-copy" type="button" data-mp-i18n="copyOffer">复制蓝方邀请</button>
+							<label><span data-mp-i18n="answerInputLabel">② 粘贴红方返回的应答凭证</span><textarea id="mp-host-answer" spellcheck="false" autocomplete="off"></textarea></label>
+							<button id="mp-accept-answer" class="game-btn" type="button" data-mp-i18n="acceptAnswer">确认应答并连接</button>
 						</div>
 					</section>
 
 					<section class="mp-connect-card mp-connect-card--red">
 						<span class="mp-faction-dot" aria-hidden="true"></span>
 						<h3 data-mp-i18n="joinTitle">加入房间 · 红方</h3>
-						<p data-mp-i18n="joinCopy">输入房主发来的六位房间码，连接后确认同一份编制。</p>
-						<label class="mp-room-input"><span data-mp-i18n="roomCode">房间码</span><input id="mp-join-code" maxlength="6" inputmode="text" autocomplete="off" placeholder="ABC123"></label>
-						<button id="mp-join" class="game-btn" type="button" data-mp-i18n="join">加入房间</button>
+						<p data-mp-i18n="joinCopy">粘贴蓝方邀请并生成红方应答，再把应答凭证发回蓝方。整个过程无需联机服务器。</p>
+						<label class="mp-handshake-field"><span data-mp-i18n="guestOfferLabel">① 粘贴蓝方邀请凭证</span><textarea id="mp-guest-offer" spellcheck="false" autocomplete="off"></textarea></label>
+						<button id="mp-join" class="game-btn" type="button" data-mp-i18n="join">生成红方应答</button>
+						<div id="mp-guest-handshake" class="mp-handshake" hidden>
+							<label><span data-mp-i18n="answerLabel">② 把红方应答凭证发回蓝方</span><textarea id="mp-guest-answer" readonly spellcheck="false"></textarea></label>
+							<button id="mp-copy-answer" class="mp-copy" type="button" data-mp-i18n="copyAnswer">复制红方应答</button>
+						</div>
 					</section>
 				</div>
 
@@ -120,9 +130,9 @@
 		</div>
 	</div>
 
-	<script src="js/ui.js?v=20260915-command2"></script>
+	<script src="js/ui.js?v=20260916-offline1"></script>
 	<script src="js/account.js"></script>
-	<script src="js/bgm.js?v=20260915-command2"></script>
-	<script src="js/multiplayer.js?v=20260915-command2"></script>
+	<script src="js/bgm.js?v=20260916-offline1"></script>
+	<script src="js/multiplayer.js?v=20260916-offline1"></script>
 </body>
 </html>

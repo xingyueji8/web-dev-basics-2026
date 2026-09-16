@@ -122,7 +122,8 @@ function renderBattleStatus() {
 		}
 		strip.appendChild(item);
 	});
-	strip.title = gameContent(meta.mechanic || meta.hint || '');
+	// 释义只由“威胁 / 战意”旁的 i 按钮承载，避免整框原生标题与说明气泡重叠。
+	strip.removeAttribute('title');
 }
 
 function updateBattleMomentum(defeatedThisTurn) {
