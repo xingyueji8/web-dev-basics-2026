@@ -92,16 +92,16 @@ var LEVELS_ORDER = [
 			localizedText('用步兵卡住守军，骑兵从另一侧直插炮位。', 'Pin the infantry with line troops while cavalry reaches the battery from the other side.')
 		],
 		story: [
-			campaignLine('联军司令', localizedText('埃吉莱特高地守备部', 'L’Eguillette Heights Command'), 'right', COALITION, '港湾就在脚下。只要这门炮还能封锁山道，法国人的火炮就上不来。', 'The harbor lies below. As long as this gun seals the road, the French cannot bring their batteries onto the heights.', 'challenge'),
-			campaignLine(localizedText('让・安多歇・朱诺', 'Jean-Andoche Junot'), localizedText('前线传令兵', 'Front-line Courier'), 'right', COURIER, '埃吉莱特能同时俯瞰内外锚地。可固定炮已经校准山道，强攻会付出代价。', 'L’Eguillette overlooks both anchorages. But the fixed battery is already ranged on the road; a direct assault will be costly.', 'report'),
-			campaignLine('拿破仑', localizedText('炮兵指挥官', 'Artillery Commander'), 'left', NAPOLEON, '所以步兵不是去和炮弹赛跑，而是替我们的炮兵遮住观察线。只要自己的火炮展开，射程会替我们赢下山道。', 'The infantry will not race the shells; it will blind the observers for our guns. Once our battery deploys, range will win the road.', 'resolve'),
+			campaignLine('联军司令', localizedText('埃吉莱特高地守备部', 'L’Eguillette Heights Command'), 'right', COALITION, '港湾就在脚下。这门炮只要封住山道，法国火炮就上不来。', 'The harbor lies below. If this gun seals the road, French batteries cannot reach the heights.', 'challenge'),
+			campaignLine(localizedText('让・安多歇・朱诺', 'Jean-Andoche Junot'), localizedText('前线传令兵', 'Front-line Courier'), 'right', COURIER, '埃吉莱特俯瞰内外锚地。固定炮已校准山道，强攻必然代价惨重。', 'L’Eguillette commands both anchorages, but the fixed battery is already ranged on the road.', 'report'),
+			campaignLine('拿破仑', localizedText('炮兵指挥官', 'Artillery Commander'), 'left', NAPOLEON, '步兵替炮兵遮住观察线；我方火炮一旦展开，射程就会赢下山道。', 'Infantry will blind the observers; once our guns deploy, range will win the road.', 'resolve'),
 			campaignLine(localizedText('炮兵军官', 'Artillery Officer'), localizedText('共和军围城炮兵', 'Republican Siege Artillery'), 'right', ADJUTANT, '炮架已经固定，葡萄弹与实心弹装填完毕。', 'The carriages are braced; canister and round shot are ready.', 'report'),
-			campaignLine('拿破仑', localizedText('炮兵指挥官', 'Artillery Commander'), 'left', NAPOLEON, '夺下高地，让港里的每一艘联军军舰都明白：锚地已经不再安全。', 'Take the heights, and make every coalition ship understand that its anchorage is no longer safe.', 'command')
+			campaignLine('拿破仑', localizedText('炮兵指挥官', 'Artillery Commander'), 'left', NAPOLEON, '夺下高地，让港中每艘联军军舰都明白：锚地不再安全。', 'Take the heights. Make every coalition ship understand that the anchorage is no longer safe.', 'command')
 		],
 		victoryStory: [
-			campaignLine(localizedText('炮兵军官', 'Artillery Officer'), localizedText('埃吉莱特炮台', 'L’Eguillette Battery'), 'right', ADJUTANT, '炮口已经转向内港。英国舰船升起信号旗，码头和军火库同时燃起了火。', 'Our guns now face the inner harbor. British ships are raising signal flags, while fires spread through the docks and arsenal.', 'report'),
-			campaignLine('拿破仑', localizedText('炮兵指挥官', 'Artillery Commander'), 'left', NAPOLEON, '他们不是在准备反击，而是在准备撤离。土伦已经失去继续坚守的理由。', 'They are not preparing a counterattack—they are preparing to leave. Toulon has lost every reason to hold out.', 'resolve'),
-			campaignLine(localizedText('战地旁白', 'Battlefield Chronicle'), localizedText('1793年12月22日', '22 December 1793'), 'right', ADJUTANT, '联军撤出土伦后，二十四岁的波拿巴被擢升为准将。他第一次从无名军官变成共和国瞩目的将领。', 'After the coalition evacuated Toulon, the twenty-four-year-old Bonaparte was promoted to brigadier general—his first leap from obscurity.', 'report')
+			campaignLine(localizedText('炮兵军官', 'Artillery Officer'), localizedText('埃吉莱特炮台', 'L’Eguillette Battery'), 'right', ADJUTANT, '炮口转向内港。英国舰船升起撤退信号，码头与军火库燃起火光。', 'The guns face the inner harbor. British ships signal withdrawal as the docks and arsenal burn.', 'report'),
+			campaignLine('拿破仑', localizedText('炮兵指挥官', 'Artillery Commander'), 'left', NAPOLEON, '他们不是准备反击，而是准备撤离。土伦已失去坚守的理由。', 'They are preparing to leave, not counterattack. Toulon has no reason left to hold.', 'resolve'),
+			campaignLine(localizedText('战地旁白', 'Battlefield Chronicle'), localizedText('1793年12月22日', '22 December 1793'), 'right', ADJUTANT, '联军撤出土伦后，二十四岁的波拿巴升为准将，成为共和国瞩目的将领。', 'After Toulon, the twenty-four-year-old Bonaparte became a brigadier general and a commander the Republic could no longer overlook.', 'report')
 		]
 	},
 	{
@@ -117,16 +117,16 @@ var LEVELS_ORDER = [
 			localizedText('敌军一翼被牵住后，骑兵绕击另一翼并及时脱离。', 'Once one wing is pinned, sweep around the other with cavalry and pull out promptly.')
 		],
 		story: [
-			campaignLine('萨瓦里', '副官', 'right', ADJUTANT, '清晨六点，雾浓得看不见谷底。内伊元帅已经抢先投入战斗，却和后续步兵脱节。', 'It is six in the morning, and the fog hides the valley. Marshal Ney has entered too early and become separated from the following infantry.', 'report'),
-			campaignLine('拿破仑', '法兰西皇帝', 'left', NAPOLEON, '他的勇气总比命令快一步。普鲁士—萨克森军还在高原上展开，我们有两轮命令把缺口补上。', 'His courage always outruns his orders. The Prussian-Saxon army is still deploying; we have two commands to close the gap.', 'resolve'),
-			campaignLine('联军司令', localizedText('霍恩洛厄军团司令部', 'Hohenlohe’s Army Command'), 'right', COALITION, '雾会掩住我们的整队，也会吞掉法军骑兵。稳住阵线，等他们自己撞上来。', 'The fog will conceal our deployment—and swallow the French cavalry. Hold the line and let them blunder into us.', 'challenge'),
-			campaignLine('萨瓦里', '副官', 'right', ADJUTANT, '拉纳在中央，奥热罗在左翼，苏尔特正从右翼赶来。各军团都在等待统一信号。', 'Lannes holds the center, Augereau the left, and Soult is arriving from the right. Every corps is waiting for one signal.', 'report'),
-			campaignLine('拿破仑', '法兰西皇帝', 'left', NAPOLEON, '先整队，再让最近的敌人以为他找到了突破口。等雾散开，我们的两翼会替他合上那扇门。', 'Form up first, then let the nearest enemy believe he has found a breach. When the fog lifts, our wings will close that door.', 'command')
+			campaignLine('萨瓦里', '副官', 'right', ADJUTANT, '清晨六点，浓雾遮住谷底。内伊抢先交战，已与后续步兵脱节。', 'At six, fog hides the valley. Ney has engaged too early and lost contact with the following infantry.', 'report'),
+			campaignLine('拿破仑', '法兰西皇帝', 'left', NAPOLEON, '他的勇气总比命令快。普军仍在高原展开，我们有两轮命令补上缺口。', 'His courage outruns his orders. The Prussians are still deploying; we have two commands to close the gap.', 'resolve'),
+			campaignLine('联军司令', localizedText('霍恩洛厄军团司令部', 'Hohenlohe’s Army Command'), 'right', COALITION, '雾能掩护整队，也能吞掉法军骑兵。稳住阵线，等他们撞来。', 'Fog hides our deployment and swallows French cavalry. Hold and let them come.', 'challenge'),
+			campaignLine('萨瓦里', '副官', 'right', ADJUTANT, '拉纳居中，奥热罗在左，苏尔特从右翼赶来；各军团都在等信号。', 'Lannes holds the center, Augereau the left, and Soult comes from the right; all await the signal.', 'report'),
+			campaignLine('拿破仑', '法兰西皇帝', 'left', NAPOLEON, '先整队，再让最近的敌人以为找到缺口。雾散时，两翼会替他关门。', 'Form up, then let the nearest enemy believe he has found a gap. When the fog lifts, our wings close the door.', 'command')
 		],
 		victoryStory: [
-			campaignLine('萨瓦里', '副官', 'right', ADJUTANT, '霍恩洛厄的阵线正在瓦解。还有北方急报——达武元帅在奥尔施塔特遭遇了普军主力。', 'Hohenlohe’s line is collapsing. A northern dispatch says Marshal Davout met the main Prussian army at Auerstedt.', 'report'),
+			campaignLine('萨瓦里', '副官', 'right', ADJUTANT, '霍恩洛厄的阵线正在瓦解。北方急报：达武元帅在奥尔施塔特遭遇普军主力。', 'Hohenlohe’s line is collapsing. Davout has met the main Prussian army at Auerstedt.', 'report'),
 			campaignLine('拿破仑', '法兰西皇帝', 'left', NAPOLEON, '第三军兵力远少于他们。告诉我，达武守住了吗？', 'The III Corps is badly outnumbered. Tell me—did Davout hold?', 'resolve'),
-			campaignLine('萨瓦里', '副官', 'right', ADJUTANT, '不只守住了，陛下。他击败了普军主力。耶拿与奥尔施塔特在同一天，变成了一场双重胜利。', 'He did more than hold, Sire. He defeated the main Prussian army. Jena and Auerstedt became a double victory on the same day.', 'report')
+			campaignLine('萨瓦里', '副官', 'right', ADJUTANT, '不只守住了。他击败普军主力，耶拿与奥尔施塔特同日成为双重胜利。', 'He did more than hold. He defeated the main Prussian army; Jena and Auerstedt became a double victory.', 'report')
 		]
 	},
 	{
@@ -142,16 +142,16 @@ var LEVELS_ORDER = [
 			localizedText('两支敌军逃脱仍可通关；不要为追残兵放空整条封锁线。', 'You may still win after two escapes; do not abandon the blockade to chase one damaged unit.')
 		],
 		story: [
-			campaignLine('联军司令', localizedText('普鲁士残部指挥部', 'Prussian Remnant Command'), 'right', COALITION, '不必再维持队形！向东北撤退，越过那条道路就能与后方军团会合。', 'Forget the formation! Withdraw northeast; beyond that road we can rejoin the rearward corps.', 'challenge'),
-			campaignLine('萨瓦里', '副官', 'right', ADJUTANT, '达武以第三军挡住了普军主力。布伦瑞克公爵重伤后，指挥链已经断裂；两处战场的溃兵正挤在同一条路上。', 'Davout’s III Corps held the main Prussian army. With the Duke of Brunswick mortally wounded, command has broken, and fugitives from both fields crowd one road.', 'report'),
-			campaignLine('拿破仑', '法兰西皇帝', 'left', NAPOLEON, '一个军击败一支主力军……达武今天赢得的不只是战斗，还有元帅杖上的新名字。', 'One corps defeating an army… Davout has won more than a battle today; he has earned a new name for his marshal’s baton.', 'resolve'),
+			campaignLine('联军司令', localizedText('普鲁士残部指挥部', 'Prussian Remnant Command'), 'right', COALITION, '不要再维持队形！向东北撤，越过道路就能与后方军团会合。', 'Abandon formation! Withdraw northeast and rejoin the rearward corps beyond the road.', 'challenge'),
+			campaignLine('萨瓦里', '副官', 'right', ADJUTANT, '达武挡住普军主力。布伦瑞克公爵重伤，指挥链断裂，两处战场的溃兵正挤上同一路。', 'Davout has held the main army. Brunswick is mortally wounded, command is broken, and both routs crowd one road.', 'report'),
+			campaignLine('拿破仑', '法兰西皇帝', 'left', NAPOLEON, '一个军击败一支主力军……达武今天还为元帅杖赢得了新名字。', 'One corps defeats an army… Davout has earned a new name for his marshal’s baton.', 'resolve'),
 			campaignLine('萨瓦里', '副官', 'right', ADJUTANT, '若让残部重新集结，柏林方向仍会出现第二道防线。', 'If these remnants regroup, another defensive line may form on the road to Berlin.', 'report'),
-			campaignLine('拿破仑', '法兰西皇帝', 'left', NAPOLEON, '不给他们第二次列队的时间。骑兵抢到前面，步兵从后压迫——合上这张网。', 'Give them no time to form again. Cavalry ahead, infantry pressing from behind—close the net.', 'command')
+			campaignLine('拿破仑', '法兰西皇帝', 'left', NAPOLEON, '不给他们第二次列队。骑兵抢前，步兵后压——合上这张网。', 'Give them no second formation. Cavalry ahead, infantry behind—close the net.', 'command')
 		],
 		victoryStory: [
-			campaignLine('萨瓦里', '副官', 'right', ADJUTANT, '出口已经封住。逃出战场的部队无法再组成完整军团，通往柏林的道路正在敞开。', 'The exit is sealed. The units that escaped cannot form a coherent army; the road to Berlin is opening.', 'report'),
-			campaignLine('拿破仑', '法兰西皇帝', 'left', NAPOLEON, '追击的意义不在于多俘虏几面旗，而在于让敌人明天醒来时，发现自己已经没有军队。', 'Pursuit is not about a few more colors. It is about ensuring the enemy wakes tomorrow to find he no longer has an army.', 'resolve'),
-			campaignLine(localizedText('战地旁白', 'Battlefield Chronicle'), localizedText('史实节点', 'Historical Note'), 'right', ADJUTANT, '耶拿—奥尔施塔特的双重失败引发普军全面崩溃；法军随后迅速进入柏林。', 'The twin defeats at Jena and Auerstedt triggered the collapse of the Prussian army, and French forces soon entered Berlin.', 'report')
+			campaignLine('萨瓦里', '副官', 'right', ADJUTANT, '出口已经封住。逃出的部队无法重组成军，通往柏林的道路正在敞开。', 'The exit is sealed. The fugitives cannot reform an army, and the road to Berlin is opening.', 'report'),
+			campaignLine('拿破仑', '法兰西皇帝', 'left', NAPOLEON, '追击不是为了多俘虏几面旗，而是让敌人明日醒来时发现军队已不存在。', 'Pursuit is not for a few more colors, but to make the enemy wake without an army.', 'resolve'),
+			campaignLine(localizedText('战地旁白', 'Battlefield Chronicle'), localizedText('史实节点', 'Historical Note'), 'right', ADJUTANT, '耶拿—奥尔施塔特的双重失败引发普军崩溃；法军随后迅速进入柏林。', 'The twin defeats broke the Prussian army; French forces soon entered Berlin.', 'report')
 		]
 	},
 	{
@@ -167,17 +167,17 @@ var LEVELS_ORDER = [
 			localizedText('中路牵制、骑兵绕侧、散兵补刀，避免火力平均分散。', 'Pin the center, flank with cavalry, and let skirmishers finish damaged units; do not spread fire evenly.')
 		],
 		story: [
-			campaignLine(localizedText('加斯帕尔・古尔戈', 'Gaspard Gourgaud'), '副官', 'right', ADJUTANT, '巴克莱与巴格拉季昂的军队终于在斯摩棱斯克会合，但仍不愿决战，只留下后卫守城。', 'Barclay and Bagration have joined near Smolensk, yet still refuse a decisive battle and have left only a rearguard in the city.', 'report'),
-			campaignLine('拿破仑', '法兰西皇帝', 'left', NAPOLEON, '从涅曼河到这里，他们一直向东退。若主力又从第聂伯河彼岸脱身，我们得到的只会是一座空城。', 'They have withdrawn eastward from the Niemen. If the main army escapes across the Dnieper again, we will win only an empty city.', 'resolve'),
-			campaignLine(localizedText('俄军将领', 'Russian Commander'), localizedText('斯摩棱斯克后卫部队', 'Smolensk Rearguard'), 'right', COALITION, '守住城墙直到夜幕。主力必须完整退向莫斯科；桥梁最后再毁，仓库不能留给法国人。', 'Hold the walls until nightfall. The main army must withdraw intact toward Moscow; destroy the bridges last and leave no stores.', 'challenge'),
-			campaignLine('传令兵', '近卫骑兵通讯队', 'right', COURIER, '城内已经起火。炮击、巷战和撤退命令混在一起，粮仓也在燃烧。', 'The city is burning. Bombardment, street fighting, and withdrawal orders have merged into chaos; the granaries are aflame.', 'report'),
-			campaignLine('拿破仑', '法兰西皇帝', 'left', NAPOLEON, '比火焰更快。击穿纵深、夺下渡口——我要的是俄军主力，不是一堆写着胜利的灰烬。', 'Move faster than the flames. Break the depth and seize the crossings—I want the Russian army, not ashes labeled victory.', 'command')
+			campaignLine(localizedText('加斯帕尔・古尔戈', 'Gaspard Gourgaud'), '副官', 'right', ADJUTANT, '巴克莱与巴格拉季昂在斯摩棱斯克会合，却仍拒绝决战，只留后卫守城。', 'Barclay and Bagration have united at Smolensk but still refuse battle, leaving only a rearguard.', 'report'),
+			campaignLine('拿破仑', '法兰西皇帝', 'left', NAPOLEON, '他们从涅曼河一路东退。若主力再渡第聂伯河，我们只会得到空城。', 'They have retreated east from the Niemen. If the main army crosses the Dnieper again, we gain an empty city.', 'resolve'),
+			campaignLine(localizedText('俄军将领', 'Russian Commander'), localizedText('斯摩棱斯克后卫部队', 'Smolensk Rearguard'), 'right', COALITION, '守到夜幕，掩护主力撤向莫斯科；最后毁桥，仓库不能留给法国人。', 'Hold until night and cover the retreat to Moscow; destroy the bridge last and leave no stores.', 'challenge'),
+			campaignLine('传令兵', '近卫骑兵通讯队', 'right', COURIER, '城内起火了。炮击、巷战与撤退混在一起，粮仓也在燃烧。', 'The city is burning. Bombardment, street fighting, retreat, and flaming granaries merge into chaos.', 'report'),
+			campaignLine('拿破仑', '法兰西皇帝', 'left', NAPOLEON, '比火更快。击穿纵深、夺下渡口——我要俄军，不要胜利的灰烬。', 'Faster than the flames. Break through and seize the crossing—I want the army, not victorious ashes.', 'command')
 		],
 		victoryStory: [
-			campaignLine(localizedText('加斯帕尔・古尔戈', 'Gaspard Gourgaud'), '副官', 'right', ADJUTANT, '最后一处阵地已经肃清。可是俄军主力连夜渡过第聂伯河，桥也被毁了。', 'The last position is clear. But the Russian main army crossed the Dnieper during the night and destroyed the bridge.', 'report'),
-			campaignLine('拿破仑', '法兰西皇帝', 'left', NAPOLEON, '我们占领了城市，却没有得到会结束战争的那场胜利。', 'We have taken the city, but not the victory that would end the war.', 'resolve'),
-			campaignLine('传令兵', '近卫骑兵通讯队', 'right', COURIER, '补给官报告，能用的仓库所剩无几。俄军正继续向莫斯科撤退。', 'The quartermasters report that few usable stores remain. The Russians are still withdrawing toward Moscow.', 'report'),
-			campaignLine('拿破仑', '法兰西皇帝', 'left', NAPOLEON, '地图上向东的一寸，在现实里会吞掉成千上万双靴子。可现在，我们已经停不下来了。', 'One inch eastward on a map consumes thousands of boots in reality. Yet now we can no longer stop.', 'resolve')
+			campaignLine(localizedText('加斯帕尔・古尔戈', 'Gaspard Gourgaud'), '副官', 'right', ADJUTANT, '阵地已肃清，但俄军主力连夜渡过第聂伯河并毁桥。', 'The positions are clear, but the Russian main army crossed the Dnieper by night and destroyed the bridge.', 'report'),
+			campaignLine('拿破仑', '法兰西皇帝', 'left', NAPOLEON, '我们占领城市，却没有得到能结束战争的胜利。', 'We took the city, but not the victory that could end the war.', 'resolve'),
+			campaignLine('传令兵', '近卫骑兵通讯队', 'right', COURIER, '补给官报告，可用仓库所剩无几。俄军仍在向莫斯科撤退。', 'Few usable stores remain. The Russians are still retreating toward Moscow.', 'report'),
+			campaignLine('拿破仑', '法兰西皇帝', 'left', NAPOLEON, '地图向东一寸，现实便吞掉万双靴子；可我们已停不下来。', 'One inch east consumes ten thousand boots; yet we can no longer stop.', 'resolve')
 		]
 	},
 	{
@@ -193,17 +193,17 @@ var LEVELS_ORDER = [
 			localizedText('受伤核心及时后撤；敌军换目标的一回合就是重新排阵的窗口。', 'Withdraw a damaged core unit; the turn in which enemies retarget is your chance to reform.')
 		],
 		story: [
-			campaignLine('拿破仑', '法兰西皇帝', 'left', NAPOLEON, '威灵顿在四臂村，布吕歇尔在利尼。唯一的胜机，是在他们会合前把两支联军分开击破。', 'Wellington is at Quatre Bras and Blücher at Ligny. Our only chance is to defeat the allied armies separately before they unite.', 'resolve'),
-			campaignLine(localizedText('加斯帕尔・古尔戈', 'Gaspard Gourgaud'), '副官', 'right', ADJUTANT, '内伊正牵制英荷军，但德尔隆第一军的命令发生冲突。原本用于包围普军的兵力还没有出现。', 'Ney is holding the Anglo-Allied army, but conflicting orders have diverted d’Erlon’s I Corps. The enveloping force has not appeared.', 'report'),
-			campaignLine(localizedText('布吕歇尔', 'Gebhard von Blücher'), localizedText('普鲁士陆军元帅', 'Prussian Field Marshal'), 'right', COALITION, '法国人想从中央把我们劈开。集中火力先打掉他们的炮兵和骑兵，等威灵顿赶来！', 'The French mean to split us through the center. Concentrate on their guns and cavalry first, and hold until Wellington arrives!', 'challenge'),
-			campaignLine(localizedText('加斯帕尔・古尔戈', 'Gaspard Gourgaud'), '副官', 'right', ADJUTANT, '普军正在放弃外围，把兵力压进利尼村和中央高地。', 'The Prussians are yielding the edges and packing their strength into Ligny village and the central heights.', 'report'),
-			campaignLine('拿破仑', '法兰西皇帝', 'left', NAPOLEON, '那正是他们最脆弱的地方。近卫军留到最后，步兵护住火炮——黄昏前击穿中央。', 'That is precisely where they are weakest. Hold the Guard until the end, screen the guns, and break the center before dusk.', 'command')
+			campaignLine('拿破仑', '法兰西皇帝', 'left', NAPOLEON, '威灵顿在四臂村，布吕歇尔在利尼。必须在他们会合前分开击破。', 'Wellington is at Quatre Bras, Blücher at Ligny. We must defeat them separately before they unite.', 'resolve'),
+			campaignLine(localizedText('加斯帕尔・古尔戈', 'Gaspard Gourgaud'), '副官', 'right', ADJUTANT, '内伊牵制英荷军，但德尔隆第一军因命令冲突未能出现，包围兵力落空。', 'Ney holds the Anglo-Allied army, but conflicting orders keep d’Erlon away and ruin the envelopment.', 'report'),
+			campaignLine(localizedText('布吕歇尔', 'Gebhard von Blücher'), localizedText('普鲁士陆军元帅', 'Prussian Field Marshal'), 'right', COALITION, '法国人想劈开中央。先集火炮兵与骑兵，守到威灵顿赶来！', 'The French mean to split our center. Strike their guns and cavalry; hold until Wellington arrives!', 'challenge'),
+			campaignLine(localizedText('加斯帕尔・古尔戈', 'Gaspard Gourgaud'), '副官', 'right', ADJUTANT, '普军正放弃外围，把兵力压进利尼村与中央高地。', 'The Prussians yield the edges and mass in Ligny village and the central heights.', 'report'),
+			campaignLine('拿破仑', '法兰西皇帝', 'left', NAPOLEON, '那正是弱处。近卫留到最后，步兵护住火炮——黄昏前击穿中央。', 'That is the weak point. Hold the Guard, screen the guns, and break the center before dusk.', 'command')
 		],
 		victoryStory: [
-			campaignLine(localizedText('加斯帕尔・古尔戈', 'Gaspard Gourgaud'), '副官', 'right', ADJUTANT, '普军中央崩溃，布吕歇尔在骑兵冲锋中坠马，近卫军已经越过利尼村。', 'The Prussian center has broken. Blücher was unhorsed during the cavalry charge, and the Guard has passed through Ligny.', 'report'),
-			campaignLine('拿破仑', '法兰西皇帝', 'left', NAPOLEON, '胜利了，但还不够。格鲁希必须紧追，让普军向东退，而不是转向威灵顿。', 'A victory—but not enough. Grouchy must pursue and drive the Prussians east, not let them turn toward Wellington.', 'command'),
-			campaignLine(localizedText('战地旁白', 'Battlefield Chronicle'), localizedText('史实节点', 'Historical Note'), 'right', ADJUTANT, '利尼成为拿破仑最后一次战场胜利。然而普军没有被摧毁，而是向北退往瓦夫尔；两天后，他们仍能赶到滑铁卢。', 'Ligny became Napoleon’s final battlefield victory. But the Prussians were not destroyed; they withdrew north toward Wavre and still reached Waterloo two days later.', 'report'),
-			campaignLine('拿破仑', '法兰西皇帝', 'left', NAPOLEON, '两天。我们只比历史早了两天，也只剩两天去改变它。', 'Two days. We stand only two days ahead of history—and have only two days left to change it.', 'resolve')
+			campaignLine(localizedText('加斯帕尔・古尔戈', 'Gaspard Gourgaud'), '副官', 'right', ADJUTANT, '普军中央崩溃，布吕歇尔冲锋中坠马，近卫军越过利尼村。', 'The Prussian center breaks, Blücher is unhorsed, and the Guard passes through Ligny.', 'report'),
+			campaignLine('拿破仑', '法兰西皇帝', 'left', NAPOLEON, '胜利还不够。格鲁希必须紧追，迫使普军向东。', 'Victory is not enough. Grouchy must pursue and drive the Prussians east.', 'command'),
+			campaignLine(localizedText('战地旁白', 'Battlefield Chronicle'), localizedText('史实节点', 'Historical Note'), 'right', ADJUTANT, '利尼成为拿破仑最后胜利；普军却撤往瓦夫尔，两天后仍抵达滑铁卢。', 'Ligny was Napoleon’s last victory, yet the Prussians withdrew to Wavre and reached Waterloo two days later.', 'report'),
+			campaignLine('拿破仑', '法兰西皇帝', 'left', NAPOLEON, '两天。我们只剩两天改变历史。', 'Two days. We have two days left to change history.', 'resolve')
 		]
 	}
 ];
@@ -221,23 +221,20 @@ var HIDDEN_LEVEL = {
 		localizedText('不要平均削血：双炮先压制核心同一侧的护卫，再扩大缺口。', 'Do not spread damage evenly: use both guns on one side of the guard ring, then widen the breach.'),
 		localizedText('核心存活时敌军维持环阵；骑兵佯攻一翼，主力从另一翼集中突入。', 'While the core lives, feint with cavalry on one wing and mass the main attack on the other.'),
 		localizedText('核心倒下前撤走残血单位；第二阶段敌军会立即追击生命最低者。', 'Pull wounded units back before the core falls; phase two immediately pursues the lowest-health target.'),
-		localizedText('只有 21 回合。第 8 回合仍未打开缺口，就用“回退”重新规划开局。', 'You have only 21 turns. If no breach exists around turn eight, use Undo and rethink the opening.')
+		localizedText('只有 18 回合。第 7 回合仍未打开缺口，就用“回退”重新规划开局。', 'You have only 18 turns. If no breach exists around turn seven, use Undo and rethink the opening.')
 	],
 	story: [
-		campaignLine('传令兵', '近卫骑兵通讯队', 'right', COURIER, '昨夜的大雨把道路变成泥浆。联军主力藏在蒙圣让山脊后，乌古蒙和拉艾圣庄园锁住了两翼。', 'Last night’s rain turned the roads to mud. The allied army is concealed behind the ridge, with Hougoumont and La Haye Sainte anchoring its flanks.', 'report'),
-		campaignLine('拿破仑', '法兰西皇帝', 'left', NAPOLEON, '史实里，我们把上午耗在泥地和乌古蒙；等中央真正动摇时，普军已经从普朗斯努瓦赶来。', 'In recorded history, we spent the morning in the mud and at Hougoumont. By the time the center wavered, the Prussians were arriving through Plancenoit.', 'resolve'),
-		campaignLine(localizedText('威灵顿', 'Arthur Wellesley, Duke of Wellington'), localizedText('英荷联军总司令', 'Anglo-Allied Commander'), 'right', COALITION, '步兵留在反斜面，方阵护住核心，炮兵交叉覆盖。只要布吕歇尔出现，时间就在我们这边。', 'Keep infantry on the reverse slope, squares around the center, and batteries in crossfire. Once Blücher appears, time is on our side.', 'challenge'),
-		campaignLine(localizedText('加斯帕尔・古尔戈', 'Gaspard Gourgaud'), '副官', 'right', ADJUTANT, '敌军双炮形成交叉射界，近卫核心外还有一整圈护卫。二十一轮命令后，普军先头部队就会接触战场。', 'Twin batteries overlap their fields, and a full guard ring surrounds the core. In twenty-one commands, the Prussian vanguard will reach the field.', 'report'),
-		campaignLine('拿破仑', '法兰西皇帝', 'left', NAPOLEON, '这一次不把兵力丢进无底洞。炮兵撕开同一个缺口，步兵跟进，近卫军只在决定胜负时前进。', 'This time we will not pour men into a bottomless pit. The guns tear one breach, infantry widens it, and the Guard advances only to decide the battle.', 'command'),
-		campaignLine('联军司令', localizedText('蒙圣让核心防线', 'Mont-Saint-Jean Central Line'), 'right', COALITION, '你可以改写命令，却改不了这片山脊。旧近卫军会在这里第二次倒下。', 'You may rewrite the orders, but not this ridge. The Old Guard will fall here a second time.', 'challenge'),
-		campaignLine('拿破仑', '法兰西皇帝', 'left', NAPOLEON, '历史给了我一场失败。你给我二十一回合——足够了。', 'History gave me one defeat. You give me twenty-one turns—that will be enough.', 'resolve')
+		campaignLine('传令兵', '近卫骑兵通讯队', 'right', COURIER, '昨夜暴雨化路为泥，联军藏在山脊后，乌古蒙与拉艾圣锁住两翼。', 'Last night’s rain turned the roads to mud. The allies hide behind the ridge, their flanks anchored at Hougoumont and La Haye Sainte.', 'report'),
+		campaignLine('拿破仑', '法兰西皇帝', 'left', NAPOLEON, '史实中，我们耗尽上午；中央动摇时，普军已经赶来。', 'In recorded history we spent the morning; by the time the center wavered, the Prussians had arrived.', 'resolve'),
+		campaignLine(localizedText('威灵顿', 'Arthur Wellesley, Duke of Wellington'), localizedText('英荷联军总司令', 'Anglo-Allied Commander'), 'right', COALITION, '反斜面藏兵，方阵护住核心，双炮交叉覆盖；援军一到，时间就属于我们。', 'Hide infantry on the reverse slope, guard the core with squares, and cross the batteries. Reinforcements make time ours.', 'challenge'),
+		campaignLine(localizedText('加斯帕尔・古尔戈', 'Gaspard Gourgaud'), '副官', 'right', ADJUTANT, '十八轮后普军抵达，核心外仍有整圈护卫。', 'The Prussians arrive after eighteen commands, and a full ring still guards the core.', 'report'),
+		campaignLine('拿破仑', '法兰西皇帝', 'left', NAPOLEON, '炮兵只撕一个缺口，步兵跟进；近卫只为决定胜负而前进。', 'The guns tear one breach, infantry follows, and the Guard advances only to decide the battle.', 'command'),
+		campaignLine('拿破仑', '法兰西皇帝', 'left', NAPOLEON, '十八回合，足够改写它。', 'Eighteen turns. Enough to rewrite it.', 'resolve')
 	],
 	victoryStory: [
-		campaignLine('传令兵', '近卫骑兵通讯队', 'right', COURIER, '拉艾圣已经在普军抵达前失守！联军中央后退，近卫军的鹰旗仍在向前！', 'La Haye Sainte has fallen before the Prussians arrive! The allied center is giving way, and the Guard’s eagles still advance!', 'report'),
-		campaignLine(localizedText('威灵顿', 'Arthur Wellesley, Duke of Wellington'), localizedText('英荷联军总司令', 'Anglo-Allied Commander'), 'right', COALITION, '中央无法再维持。命令全军撤退——必须在法军封住布鲁塞尔道路前脱离。', 'The center cannot hold. Order a general retreat—we must disengage before the French close the Brussels road.', 'challenge'),
-		campaignLine(localizedText('加斯帕尔・古尔戈', 'Gaspard Gourgaud'), '副官', 'right', ADJUTANT, '普军先头部队看见联军旗帜后退，正在瓦夫尔道路上停顿。', 'The Prussian vanguard has seen the allied colors withdrawing and is hesitating on the road from Wavre.', 'report'),
-		campaignLine('拿破仑', '法兰西皇帝', 'left', NAPOLEON, '记下这一刻：近卫军没有后退。滑铁卢不再是一座坟墓，而是帝国第二次升起的太阳。', 'Write down this moment: the Guard did not recoil. Waterloo is no longer a grave, but the sun rising over the Empire a second time.', 'resolve'),
-		campaignLine(localizedText('战地旁白', 'Battlefield Chronicle'), localizedText('架空历史分歧点', 'Alternate-History Divergence'), 'right', ADJUTANT, '从这一句开始，故事离开正史：联军中央在普军完成会合前崩溃，欧洲走进了从未发生过的结局。', 'From this line onward, the story leaves recorded history: the allied center collapses before the Prussians unite, and Europe enters an ending that never occurred.', 'report')
+		campaignLine('传令兵', '近卫骑兵通讯队', 'right', COURIER, '拉艾圣在普军抵达前失守！联军中央后退，近卫鹰旗仍在前进！', 'La Haye Sainte falls before the Prussians arrive! The allied center retreats while the Guard’s eagles advance.', 'report'),
+		campaignLine(localizedText('威灵顿', 'Arthur Wellesley, Duke of Wellington'), localizedText('英荷联军总司令', 'Anglo-Allied Commander'), 'right', COALITION, '中央守不住了。全军撤退，在法军封死布鲁塞尔道路前脱离！', 'The center cannot hold. Retreat before the French close the Brussels road!', 'challenge'),
+		campaignLine(localizedText('战地旁白', 'Battlefield Chronicle'), localizedText('架空历史分歧点', 'Alternate-History Divergence'), 'right', ADJUTANT, '记下：近卫没有后退。此后故事离开正史，欧洲走向未曾发生的结局。', 'The Guard did not recoil. From here the story leaves history, and Europe enters an ending that never happened.', 'report')
 	]
 };
 

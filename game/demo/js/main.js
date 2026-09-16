@@ -91,14 +91,35 @@ function renderBattleStatus() {
 	strip.style.removeProperty('display');
 	strip.innerHTML = '';
 	const items = [
-		gameText('game.difficulty', { level: Math.max(1, Math.min(7, Number(meta.difficulty) || 1)) }, '威胁 ' + (meta.difficulty || 1) + '/7'),
-		gameText('game.enemyRemain', { count: aliveUnitCount('red') }, '敌军 ' + aliveUnitCount('red')),
-		gameText('game.momentum', { level: battleMomentum, bonus: battleMomentum * 8 }, '战意 ' + battleMomentum + '/3 · +' + (battleMomentum * 8) + '%')
+		{
+			label: gameText('game.difficulty', { level: Math.max(1, Math.min(7, Number(meta.difficulty) || 1)) }, '威胁 ' + (meta.difficulty || 1) + '/7'),
+			help: gameText('game.threatHelp', null, '威胁表示本关敌军强度与机制复杂度，数值越高越危险。')
+		},
+		{ label: gameText('game.enemyRemain', { count: aliveUnitCount('red') }, '敌军 ' + aliveUnitCount('red')) },
+		{
+			label: gameText('game.momentum', { level: battleMomentum, bonus: battleMomentum * 8 }, '战意 ' + battleMomentum + '/3 · +' + (battleMomentum * 8) + '%'),
+			help: gameText('game.momentumHelp', null, '战意来自连续歼敌，每级提升下一步攻击，未歼敌则下降。')
+		}
 	];
-	items.forEach(function (label, index) {
+	items.forEach(function (data, index) {
 		const item = document.createElement('span');
 		item.className = 'battle-status__item' + (index === 2 && battleMomentum ? ' is-active' : '');
-		item.textContent = label;
+		const label = document.createElement('span');
+		label.textContent = data.label;
+		item.appendChild(label);
+		if (data.help) {
+			const info = document.createElement('button');
+			info.type = 'button';
+			info.className = 'battle-term-info';
+			info.textContent = 'i';
+			info.setAttribute('aria-label', data.help);
+			const tooltip = document.createElement('span');
+			tooltip.className = 'battle-term-tooltip';
+			tooltip.setAttribute('role', 'tooltip');
+			tooltip.textContent = data.help;
+			info.appendChild(tooltip);
+			item.appendChild(info);
+		}
 		strip.appendChild(item);
 	});
 	strip.title = gameContent(meta.mechanic || meta.hint || '');
@@ -251,6 +272,7 @@ function loadGame(game) {
 			speed: element.speed,
 			targetx: element.posx,
 			targety: element.posy,
+			followTargetId: '',
 			atkrange: element.atkrange,
 			atk: element.atk,
 			lp: element.lp,
@@ -268,6 +290,7 @@ function loadGame(game) {
 	/* 加载棋子 */
 	renderOrderArrows();
 	renderBattleStatus();
+	renderArmyRosters();
 	showLevelIntro();
 }
 
@@ -312,6 +335,7 @@ function loadSnapshot(snap) {
 			posx: u.posx, posy: u.posy,
 			speed: u.speed,
 			targetx: u.targetx, targety: u.targety,
+			followTargetId: u.followTargetId || '',
 			atkrange: u.atkrange, atk: u.atk, lp: restoredLp,
 			lpMax: restoredMax,
 			disabled: !!u.disabled,
@@ -328,6 +352,7 @@ function loadSnapshot(snap) {
 	refreshEnemySelectionUI();
 	renderOrderArrows();
 	renderBattleStatus();
+	renderArmyRosters();
 	showLevelIntro();
 }
 
@@ -343,6 +368,7 @@ function captureSnapshot() {
 			color: u.color, cls: u.cls, img: u.img || '',
 			posx: u.posx, posy: u.posy,
 			targetx: u.targetx, targety: u.targety,
+			followTargetId: u.followTargetId || '',
 			speed: u.speed, atkrange: u.atkrange, atk: u.atk, lp: u.lp,
 			lpMax: u.lpMax,   // 开局/读档时一定已按初始 LP 校准，无需兜底
 			formationRole: u.formationRole || '',
@@ -464,6 +490,7 @@ function performUndo() {
 	renderOrderArrows();
 	renderUndoButton();
 	renderBattleStatus();
+	renderArmyRosters();
 	const left = Math.max(0, MAX_UNDO_USES - undoUses);
 	if (typeof toast === 'function') toast(undoText('game.undoDone', { left: left }, '已回退一步，本关还可回退 ' + left + ' 次。'));
 }
@@ -549,6 +576,7 @@ function hideMidGameControls() {
 	if (bar) bar.style.display = 'none';
 	const ebar = document.getElementById('enemy-info');
 	if (ebar) ebar.style.display = 'none';
+	document.querySelectorAll('.army-roster').forEach(function (roster) { roster.style.display = 'none'; });
 	const rl = document.getElementById('range-layer');
 	if (rl) rl.remove();
 	rangeCircles = [];
@@ -609,7 +637,12 @@ function setToDisable(element) {
 	element.disabled = true;
 	element.lp = Math.max(0, Number(element.lp) || 0);
 	const piece = document.getElementById(element.id);
-	piece.classList.add('disabled');
+	if (piece) {
+		piece.classList.add('disabled');
+		/* 阵亡即刻从画面移除，不再保留一轮发黑的棋子轮廓。 */
+		piece.style.display = 'none';
+	}
+	if (typeof removeOrderArrow === 'function') removeOrderArrow(element.id);
 	updateUnitHealth(element);
 }
 
@@ -765,6 +798,18 @@ function nextStep() {
 
 	armys.forEach(element => {
 		if(element.disabled == true) return;
+
+		/* 追踪军令保存的是目标棋子 id。目标移动后，每个内部帧都重新取它的
+		 * 实时坐标，因此移动路线和常驻箭头会一起跟随；目标阵亡后停在最后坐标。 */
+		if (element.followTargetId) {
+			const followed = armys.find(function (unit) { return unit.id === element.followTargetId; });
+			if (followed && !followed.disabled) {
+				element.targetx = followed.posx;
+				element.targety = followed.posy;
+			} else {
+				element.followTargetId = '';
+			}
+		}
 
 		let atktar = selectMinimalDistance(element, armys);
 
@@ -935,7 +980,36 @@ function showWinResult() {
 	/* 让按钮成为战果卡片的一部分，与卡片一起在页面中央显示。 */
 	if (next.parentNode !== win) win.appendChild(next);
 	if (typeof applyUiTranslations === 'function') applyUiTranslations(win);
+	animateVictoryStars(pendingVictoryStars);
 	next.focus();
+}
+
+let pendingVictoryStars = 0;
+
+function animateVictoryStars(count) {
+	count = Math.max(1, Math.min(3, Number(count) || 1));
+	['1star', '2star', '3star'].forEach(function (id) {
+		const node = document.getElementById(id);
+		if (node) node.style.display = 'none';
+	});
+	const holder = document.getElementById(String(count) + 'star');
+	if (!holder) return;
+	holder.innerHTML = '';
+	holder.className = 'victory-stars';
+	holder.style.display = 'flex';
+	holder.setAttribute('aria-label', count + ' stars');
+	for (let i = 0; i < count; i++) {
+		const star = document.createElement('span');
+		star.className = 'victory-star';
+		star.textContent = '★';
+		star.style.setProperty('--star-delay', (i * 430) + 'ms');
+		star.setAttribute('aria-hidden', 'true');
+		const dust = document.createElement('i');
+		dust.className = 'victory-star__dust';
+		dust.setAttribute('aria-hidden', 'true');
+		star.appendChild(dust);
+		holder.appendChild(star);
+	}
 }
 
 function victoryReportText(star, saveResult) {
@@ -992,6 +1066,7 @@ function completeVictory(star, quickL1) {
 		if (typeof CURRENT_LEVEL_ID !== 'undefined') next.dataset.target = winTargetFor(CURRENT_LEVEL_ID);
 	}
 	document.body.classList.remove('result-active');
+	pendingVictoryStars = Math.max(1, Math.min(3, Number(star) || 1));
 	hideResultAlternatives();
 	let saveResult = { saved: false, openedHidden: false };
 	if (typeof autosaveOnWin === 'function' && typeof CURRENT_LEVEL_ID !== 'undefined') {
@@ -1594,6 +1669,7 @@ buttonContainer.addEventListener('click', function() {
 
 	renderInfoPanel();
 	renderEnemyPanel();
+	renderArmyRosters();
 	updateRangePositions();
 	renderOrderArrows();
 	renderUndoButton();
@@ -1674,10 +1750,11 @@ function isAliveBlue(pieceData) {
 
 // 给当前所有选中军队下令移动到 (targetX, targetY)（格坐标）。
 // 下令后清空选中：避免残留选中导致再次渲染预览箭头（常驻蓝色箭头仍保留，它与选中无关）
-function issueMoveTo(targetX, targetY) {
+function issueMoveTo(targetX, targetY, followTarget) {
 	selectedPieces.forEach(p => {
 		p.targetx = targetX;
 		p.targety = targetY;
+		p.followTargetId = followTarget && !followTarget.disabled ? followTarget.id : '';
 	});
 
 	hideArrow();
@@ -1833,7 +1910,7 @@ boardContainer.addEventListener('mouseup', function (e) {
 			if (selectedPieces.length === 1) {
 
 				// 已有单个选中：点自己=原地待命；点其它单位=让它移动到该单位的位置（原逻辑）
-				issueMoveTo(pieceData.posx, pieceData.posy);
+				issueMoveTo(pieceData.posx, pieceData.posy, pieceData);
 				return;
 
 			}
@@ -1845,8 +1922,15 @@ boardContainer.addEventListener('mouseup', function (e) {
 		// 点到红方/死亡单位：指挥模式下当作在该格下令
 	}
 
-	// 点空白处：给当前所有选中军队下令移动（仅指挥模式）
+	// 点空白处或敌军：给当前所有选中军队下令移动（仅指挥模式）。
 	if (viewMode === 'enemy' || selectedPieces.length === 0) return;
+	const clickedTarget = st.pieceEl
+		? armys.find(function (unit) { return unit.id === st.pieceEl.id && !unit.disabled; })
+		: null;
+	if (clickedTarget && clickedTarget.color === 'red') {
+		issueMoveTo(clickedTarget.posx, clickedTarget.posy, clickedTarget);
+		return;
+	}
 
 	const rect = boardContentRect();
 
@@ -1870,7 +1954,8 @@ boardContainer.addEventListener('mouseup', function (e) {
 
 	issueMoveTo(
 		getPosByCell(targetX),
-		getPosByCell(targetY)
+		getPosByCell(targetY),
+		null
 	);
 });
 
@@ -2065,6 +2150,72 @@ function unitDisplayName(p) {
 	return key ? gameText(key, null, fallback) : gameContent(fallback);
 }
 
+/* 两侧常驻战斗序列：始终展示双方存活棋子的名称与简要血量。
+ * 原 #info-bar / #enemy-info 继续承担选中后的详细属性，因此不会牺牲原有查看功能。 */
+function ensureArmyRoster(side) {
+	const id = side === 'blue' ? 'ally-roster' : 'enemy-roster';
+	let roster = document.getElementById(id);
+	if (roster) return roster;
+	roster = document.createElement('aside');
+	roster.id = id;
+	roster.className = 'army-roster army-roster--' + side;
+	roster.setAttribute('aria-live', 'polite');
+	document.body.appendChild(roster);
+	return roster;
+}
+
+function renderArmyRosters() {
+	if (!boardContainer || !Array.isArray(armys)) return;
+	['blue', 'red'].forEach(function (side) {
+		const roster = ensureArmyRoster(side);
+		roster.style.removeProperty('display');
+		roster.innerHTML = '';
+		const list = armys.filter(function (unit) { return unit.color === side && !unit.disabled; });
+		const heading = document.createElement('div');
+		heading.className = 'army-roster__heading';
+		heading.textContent = gameText(side === 'blue' ? 'game.allyRoster' : 'game.enemyRoster', null, side === 'blue' ? '我方序列' : '敌方序列') + ' · ' + list.length;
+		roster.appendChild(heading);
+		list.forEach(function (unit) {
+			const sequence = armys.filter(function (candidate) {
+				return candidate.color === unit.color && candidate.cls === unit.cls && armys.indexOf(candidate) <= armys.indexOf(unit);
+			}).length;
+			const row = document.createElement('button');
+			row.type = 'button';
+			const rosterSelected = side === 'blue'
+				? selectedPieces.indexOf(unit) >= 0
+				: selectedEnemies.indexOf(unit) >= 0;
+			row.className = 'army-roster__row' + (rosterSelected ? ' is-selected' : '');
+			row.dataset.pieceId = unit.id;
+			row.setAttribute('aria-label', unitDisplayName(unit) + ' ' + sequence + ' LP ' + Math.max(0, Math.ceil(unit.lp)) + '/' + (unit.lpMax || unit.lp));
+			const name = document.createElement('span');
+			name.className = 'army-roster__name';
+			name.textContent = unitDisplayName(unit) + ' ' + sequence;
+			const hp = document.createElement('small');
+			hp.textContent = Math.max(0, Math.ceil(unit.lp)) + '/' + (unit.lpMax || unit.lp);
+			const meter = document.createElement('i');
+			meter.style.setProperty('--roster-health', (lpRatioOf(unit) * 100).toFixed(1) + '%');
+			row.appendChild(name);
+			row.appendChild(hp);
+			row.appendChild(meter);
+			row.addEventListener('click', function () {
+				if (side === 'blue') {
+					if (viewMode !== 'ally') setViewMode('ally');
+					selectOnly(unit);
+				} else {
+					if (viewMode !== 'enemy') setViewMode('enemy');
+					selectEnemyOnly(unit);
+				}
+			});
+			row.addEventListener('mouseenter', function () {
+				const piece = document.getElementById(unit.id);
+				if (piece) piece.classList.add('hover-match', side === 'blue' ? 'hover-blue' : 'hover-red');
+			});
+			row.addEventListener('mouseleave', clearHoverMatches);
+			roster.appendChild(row);
+		});
+	});
+}
+
 function lpRatioOf(p) {
 
 	const max = p.lpMax || p.lp || 1;
@@ -2208,6 +2359,7 @@ function renderInfoPanel() {
 }
 
 addSelectionListener(renderInfoPanel);
+addSelectionListener(renderArmyRosters);
 renderInfoPanel();
 
 /* ========== 查看敌人模式（to-do #4/#5 扩展） ========== */
@@ -2436,6 +2588,7 @@ function renderEnemyPanel() {
 }
 
 addEnemySelectionListener(renderEnemyPanel);
+addEnemySelectionListener(renderArmyRosters);
 
 // 切换"指挥 / 查看敌人"模式
 function setViewMode(m) {
@@ -2958,13 +3111,18 @@ function renderOrderArrows() {
 	armys.forEach(u => {
 
 		if (u.disabled) return;
+		const followed = u.followTargetId
+			? armys.find(function (unit) { return unit.id === u.followTargetId && !unit.disabled; })
+			: null;
+		const targetx = followed ? followed.posx : u.targetx;
+		const targety = followed ? followed.posy : u.targety;
 
 		const dx =
-			u.targetx -
+			targetx -
 			u.posx;
 
 		const dy =
-			u.targety -
+			targety -
 			u.posy;
 
 		if (
@@ -2991,7 +3149,7 @@ function renderOrderArrows() {
 				Math.min(
 					offset +
 					distance *
-					u.targetx,
+					targetx,
 					w
 				)
 			);
@@ -3002,7 +3160,7 @@ function renderOrderArrows() {
 				Math.min(
 					offset +
 					distance *
-					u.targety,
+					targety,
 					h
 				)
 			);
@@ -3014,7 +3172,7 @@ function renderOrderArrows() {
 			x2,
 			y2,
 			u.color === 'red',
-			String(u.targetx) + ':' + String(u.targety)
+			u.followTargetId ? ('follow:' + u.followTargetId) : (String(u.targetx) + ':' + String(u.targety))
 		);
 
 		seen[u.id] =
@@ -3390,6 +3548,7 @@ window.addEventListener('ui:languagechange', function () {
 	renderInfoPanel();
 	renderEnemyPanel();
 	renderBattleStatus();
+	renderArmyRosters();
 	const modeButton = document.getElementById('button-mode');
 	if (modeButton) {
 		modeButton.textContent = viewMode === 'enemy'

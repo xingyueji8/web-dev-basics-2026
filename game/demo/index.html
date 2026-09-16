@@ -4,7 +4,7 @@
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>拿破仑战争 - 主页</title>
-	<link rel="stylesheet" href="css/style.css?v=20260915-story-route1">
+	<link rel="stylesheet" href="css/style.css?v=20260915-command2">
 	<link rel="icon" type="image/svg+xml" href="./favicon.svg">
 </head>
 <body class="page-login" data-title-i18n="site.title">
@@ -34,58 +34,12 @@
 		</div>
 	</div>
 
-	<!-- 完整土伦序章由对话引擎播放；这里负责剧情后的地图接镜。 -->
-	<section id="campaign-prologue" class="campaign-prologue" aria-hidden="true">
-		<div class="campaign-prologue__map" aria-hidden="true"></div>
-		<div class="campaign-prologue__copy">
-			<p class="campaign-prologue__kicker" data-i18n="transition.handoff">IMPERIAL STAFF MAP · 帝国参谋地图</p>
-			<p class="campaign-prologue__enter" data-i18n="transition.enter">正在展开欧洲战役地图……</p>
-			<button id="prologue-skip" type="button" class="campaign-prologue__skip" data-i18n="transition.skip">跳过序章</button>
-		</div>
-	</section>
+	<div class="page-route-curtain" aria-hidden="true"><span>N</span></div>
 
-
-	<script src="js/ui.js?v=20260915-story-route1"></script>
+	<script src="js/ui.js?v=20260915-command2"></script>
 	<script src="js/account.js"></script>
-	<script src="js/bgm.js?v=20260915-story-route1"></script>
-	<script src="js/dialog.js?v=20260915-story-route1"></script>
-	<script src="js/levels.js?v=20260915-story-route1"></script>
+	<script src="js/bgm.js?v=20260915-command2"></script>
 	<script>
-		function startCampaignTransition() {
-			var prologue = document.getElementById('campaign-prologue');
-			var skip = document.getElementById('prologue-skip');
-			var finished = false;
-			var go = function () {
-				if (finished) return;
-				finished = true;
-				/* 先让序章文字退场、欧洲地图向镜头推进；下一页从同一张地图
-				 * 接着显影，避免剧情介绍结束后直接“闪切”到主界面。 */
-				prologue.classList.add('is-leaving');
-				document.body.classList.add('is-entering-map');
-				window.setTimeout(function () {
-					window.location.href = 'menu.html?intro=1';
-				}, 980);
-			};
-
-			document.body.classList.add('is-deploying');
-			prologue.setAttribute('aria-hidden', 'false');
-			window.requestAnimationFrame(function () { prologue.classList.add('is-visible'); });
-			skip.addEventListener('click', go, { once: true });
-			window.setTimeout(go, 1800);
-			window.setTimeout(function () { skip.focus(); }, 350);
-		}
-
-		function playCampaignPrologue() {
-			var story = (typeof getCampaignPrologueStory === 'function')
-				? getCampaignPrologueStory()
-				: [];
-			if (story.length && typeof playDialogue === 'function') {
-				playDialogue(story, startCampaignTransition);
-				return;
-			}
-			startCampaignTransition();
-		}
-
 		document.getElementById('login-form').addEventListener('submit', function (e) {
 			e.preventDefault();
 
@@ -100,8 +54,9 @@
 				return;
 			}
 
-			// 登录成功：先播放土伦史实序章，再用同一张地图接镜进入主界面。
-			playCampaignPrologue();
+			// 登录成功先进入模式选择；选择通关模式后才播放完整序章。
+			document.body.classList.add('is-routing');
+			window.setTimeout(function () { window.location.href = 'mode.html'; }, 560);
 		});
 
 		/* 背景音乐：先尝试播放，被浏览器拦截则等页面首次点击。 */

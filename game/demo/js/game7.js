@@ -4,7 +4,7 @@
 var game7 = {
 	n: 10,
 	m: 10,
-	turns_limit: 21,
+	turns_limit: 18,
 	pieces: new Array()
 } ;
 
@@ -45,7 +45,7 @@ function bootGame7() {
 		loadGame(game7);              // 否则按关卡配置全新开局
 	}
 	refreshSlotSelect();   // 初始化关卡内 Save/Load 下拉
-	loseTips.push('Break the Guard core before the twin batteries and the second-phase counterattack exhaust your 21 turns.');
+	loseTips.push('Break the Guard core before the twin batteries and the second-phase counterattack exhaust your 18 turns.');
 }
 
 /* 第 7 关解锁条件：第 1～6 关必须全部达到 3 星。

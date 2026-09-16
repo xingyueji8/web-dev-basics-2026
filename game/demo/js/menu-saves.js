@@ -4,7 +4,8 @@
  *   页面上  —— 战役地图 #campaign-map：底图 img/europe-map.svg 上按 levels.js 的 map{lon,lat}
  *                摆旗标（关号 + 下方星级 / 进行中 / 隐藏关；完整关名在 title 里），
  *                普通关只画到"已解锁到的关卡"（后面的不出现，打到哪长到哪）；
- *                第 7 关例外：始终作为带锁情报点显示，并标注第 1～6 关的总星数 /18；
+ *                第 7 关例外：第 6 关通关后才作为情报点出现；主线未满星时带锁，
+ *                并标注第 1～6 关的总星数 /18；
  *                已通关的段 = 绛红弧形推进箭头，还没打通的下一段 = 金灰预告箭头；
  *                刚解锁了一关时，下一段先"延伸"到终点，跑完才放出下一关的标记
  *                —— 判据是主界面自己记的 revealSeen:<用户>（见 readRevealSeen），
@@ -103,6 +104,20 @@
 		try { localStorage.setItem(revealSeenKey(user), String(frontier)); } catch (e) { }
 	}
 
+	/* 地图星级另存一份“上次已看见的状态”。只有本次星级比上次高时，新增的星才
+	   逐颗钉入；第一次打开地图直接建立基线，避免老存档一次性重播全部动效。 */
+	function starSeenKey(user) { return 'mapStarSeen:' + user; }
+	function readStarSeen(user, stars) {
+		var raw = null;
+		try { raw = localStorage.getItem(starSeenKey(user)); } catch (e) { raw = null; }
+		if (raw === null) return { firstVisit: true, stars: Object.assign({}, stars || {}) };
+		try { return { firstVisit: false, stars: JSON.parse(raw) || {} }; }
+		catch (e) { return { firstVisit: true, stars: Object.assign({}, stars || {}) }; }
+	}
+	function writeStarSeen(user, stars) {
+		try { localStorage.setItem(starSeenKey(user), JSON.stringify(stars || {})); } catch (e) { }
+	}
+
 	/* 关卡之间的连线使用参谋地图式弧形推进箭头；新解锁段仍沿路径缓慢显影。 */
 	var DRAW_MS = 3000;   /* 必须与 css 的 map-route-draw 时长一致 */
 
@@ -133,7 +148,28 @@
 		dot.textContent = entry.no;
 		var stars = document.createElement('span');
 		stars.className = 'map-pin__stars';
-		stars.textContent = entry.starsText;
+		if (entry.locked) {
+			stars.textContent = entry.starsText;
+		} else {
+			var earned = Math.max(0, Math.min(3, Number(entry.stars) || 0));
+			var animatedFrom = Math.max(0, Math.min(earned, Number(entry.animatedFrom) || 0));
+			for (var starIndex = 0; starIndex < 3; starIndex++) {
+				var star = document.createElement('span');
+				star.className = 'map-star' + (starIndex < earned ? ' is-earned' : '');
+				star.textContent = starIndex < earned ? '★' : '☆';
+				star.setAttribute('aria-hidden', 'true');
+				if (starIndex >= animatedFrom && starIndex < earned) {
+					star.classList.add('map-star--impact');
+					star.style.setProperty('--map-star-delay', ((starIndex - animatedFrom) * 390) + 'ms');
+					var dust = document.createElement('i');
+					dust.className = 'map-star__dust';
+					dust.setAttribute('aria-hidden', 'true');
+					star.appendChild(dust);
+				}
+				stars.appendChild(star);
+			}
+			stars.setAttribute('aria-label', earned + '/3 星');
+		}
 		el.appendChild(dot);
 		if (entry.locked) {
 			var lock = document.createElement('span');
@@ -177,16 +213,19 @@
 		var NS = 'http://www.w3.org/2000/svg';
 		var marker = document.createElementNS(NS, 'marker');
 		marker.setAttribute('id', id);
-		marker.setAttribute('viewBox', '0 0 14 10');
-		marker.setAttribute('refX', '12.2');
-		marker.setAttribute('refY', '5');
-		marker.setAttribute('markerWidth', '14');
-		marker.setAttribute('markerHeight', '10');
+		marker.setAttribute('viewBox', '0 0 22 18');
+		marker.setAttribute('refX', '19');
+		marker.setAttribute('refY', '9');
+		marker.setAttribute('markerWidth', '22');
+		marker.setAttribute('markerHeight', '18');
 		marker.setAttribute('markerUnits', 'userSpaceOnUse');
 		marker.setAttribute('orient', 'auto');
 		var head = document.createElementNS(NS, 'path');
-		head.setAttribute('d', 'M 0 0 L 14 5 L 0 10 L 3.2 5 Z');
+		head.setAttribute('d', 'M 1 1 L 21 9 L 1 17 L 6.5 9 Z');
 		head.setAttribute('fill', color);
+		head.setAttribute('stroke', '#17130e');
+		head.setAttribute('stroke-width', '1.25');
+		head.setAttribute('stroke-linejoin', 'round');
 		marker.appendChild(head);
 		defs.appendChild(marker);
 	}
@@ -218,8 +257,8 @@
 		appendArrowMarker(styleDefs, 'route-arrow-draw', '#f08a78');
 		svg.appendChild(styleDefs);
 		for (var i = 0; i < entries.length - 1; i++) {
-			/* 锁定的第 7 关始终显示，但第 6 关尚未出现在地图上时保持为孤立情报点，
-			   避免从第 1～5 关直接跨越整张地图连到滑铁卢。 */
+			/* 第 7 关只会在第 6 关通关后进入 entries；未满星时从第 6 关
+			   连到锁定情报点，满星后同一节点原地解锁。 */
 			if (entries[i + 1].locked && Number(entries[i].no) !== 6) continue;
 			var a = mapUnits(entries[i].map), b = mapUnits(entries[i + 1].map);
 			var d = routeCurve(a, b, i);
@@ -265,6 +304,8 @@
 
 		var LEVELS = (typeof getLevelList === 'function') ? getLevelList() : [];
 		var auto = autoProgress(user);
+		var starSeenState = readStarSeen(user, auto.stars || {});
+		var starSeen = starSeenState.stars;
 		var unlockId = unlockParam();
 		var frontier = Number(auto.unlocked) || 1;   // 已解锁到第几关
 
@@ -291,6 +332,7 @@
 			var state = cont ? 'cont' : (s > 0 ? 'done' : 'open');
 			entries.push({
 				no: lv.id, map: lv.map, stars: s, cont: cont, state: state,
+				animatedFrom: Math.min(s, Math.max(0, Number(starSeen['' + lv.id]) || 0)),
 				starsText: mapStars(s),
 				title: localText(lv.name) + ' —— ' + (cont ? '进行中，点标记继续'
 					: (s > 0 ? mapStars(s) + '，可重玩' : '未通关，点标记开始')),
@@ -299,9 +341,10 @@
 			});
 		});
 
-		// —— 第 7 关始终显示：未满 18 星时带锁并显示主线星级进度；满星后恢复为可进入节点。——
+		// —— 第 6 关通关后显示第 7 关情报：未满 18 星时带锁；满星后开放入口。——
 		var hm = (typeof getHiddenLevel === 'function') ? getHiddenLevel() : null;
-		if (hm && hm.map) {
+		var level6Cleared = (typeof hasBeatenLevel === 'function') && hasBeatenLevel(user, 6);
+		if (hm && hm.map && level6Cleared) {
 			var starState = auto.stars || {};
 			var routeStars = mainRouteStars(starState);
 			var routeOpen = (typeof hiddenRouteOpen === 'function') && hiddenRouteOpen();
@@ -312,6 +355,7 @@
 				'第 7 关尚未解锁：当前 ' + routeStars + '/18 星；第 1～6 关全部获得 3 星后开启。');
 			entries.push({
 				no: 7, map: hm.map, stars: hs7, cont: hcont, hidden: true, locked: !routeOpen,
+				animatedFrom: Math.min(hs7, Math.max(0, Number(starSeen['7']) || 0)),
 				state: routeOpen ? (hcont ? 'cont' : (hs7 > 0 ? 'done' : 'open')) : 'locked',
 				starsText: routeOpen ? mapStars(hs7) : progressText,
 				title: routeOpen ? (localText(hm.name) + '（隐藏关）') : lockedTitle,
@@ -325,6 +369,7 @@
 		var svg = map.querySelector('.campaign-map__route');
 		renderRoute(svg, entries, revealId);
 		entries.forEach(function (e) { map.appendChild(buildPin(e)); });
+		writeStarSeen(user, auto.stars || {});
 
 		// 刚通关（带了 ?unlock=）：先让新解锁那段"延伸"到终点，跑完再放出下一关的标记。
 		// 开了"减少动态效果"就直接全部显示，不做延迟。

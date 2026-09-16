@@ -135,6 +135,10 @@ function playDialogue(lines, onDone) {
 	next.type = 'button';
 	next.className = 'game-btn dialog-next';
 	next.textContent = '继续';
+	const skip = document.createElement('button');
+	skip.type = 'button';
+	skip.className = 'dialog-skip';
+	skip.textContent = translate('dialogue.skip', '跳过剧情');
 
 	paper.appendChild(heading);
 	paper.appendChild(text);
@@ -143,6 +147,7 @@ function playDialogue(lines, onDone) {
 	box.appendChild(next);
 	overlay.appendChild(chapter);
 	overlay.appendChild(box);
+	overlay.appendChild(skip);
 
 	/* 预先找到左右两侧第一次出现的立绘，让开场第一帧就能两侧站人。 */
 	const actionPreloads = [];
@@ -166,6 +171,13 @@ function playDialogue(lines, onDone) {
 
 	let i = 0;
 	let motionTick = 0;
+	let finished = false;
+	const duckedAudio = [];
+	document.querySelectorAll('audio').forEach(function (audio) {
+		const previous = Number.isFinite(Number(audio.volume)) ? Number(audio.volume) : 0.5;
+		duckedAudio.push({ audio: audio, volume: previous });
+		audio.volume = Math.min(previous, 0.16);
+	});
 	function inferPortraitAction(line, index) {
 		if (line.action) return line.action;
 		const identity = String(line.who || '') + ' ' + String(line.role || '');
@@ -258,6 +270,7 @@ function playDialogue(lines, onDone) {
 		text.textContent = localize(line.text);
 		progress.textContent = String(j + 1).padStart(2, '0') + ' / ' + String(lines.length).padStart(2, '0');
 		next.textContent = localize(line.actionLabel) || translate(j === lines.length - 1 ? 'dialogue.finish' : 'dialogue.continue', j === lines.length - 1 ? '完成' : '继续');
+		skip.textContent = translate('dialogue.skip', '跳过剧情');
 		overlay.setAttribute('aria-label', translate('dialogue.label', '剧情对话'));
 
 		/* 姓名和正文逐句淡入，切换语言时也会立即刷新。 */
@@ -267,11 +280,20 @@ function playDialogue(lines, onDone) {
 	}
 
 	function finish() {
+		if (finished) return;
+		finished = true;
 		motionTick += 1;
 		window.removeEventListener('ui:languagechange', refreshLanguage);
+		document.removeEventListener('keydown', onDialogueKey);
+		duckedAudio.forEach(function (item) {
+			if (item.audio && item.audio.isConnected) item.audio.volume = item.volume;
+		});
 		document.body.classList.remove('dialogue-active');
-		overlay.remove();
-		if (onDone) onDone();
+		overlay.classList.add('is-leaving');
+		window.setTimeout(function () {
+			overlay.remove();
+			if (onDone) onDone();
+		}, 260);
 	}
 
 	function advance() {
@@ -288,6 +310,16 @@ function playDialogue(lines, onDone) {
 		e.stopPropagation();
 		advance();
 	});
+	skip.addEventListener('click', function (e) {
+		e.stopPropagation();
+		finish();
+	});
+	function onDialogueKey(e) {
+		if (e.key !== 'Escape') return;
+		e.preventDefault();
+		finish();
+	}
+	document.addEventListener('keydown', onDialogueKey);
 
 	function refreshLanguage() { show(i); }
 	window.addEventListener('ui:languagechange', refreshLanguage);

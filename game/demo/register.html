@@ -4,7 +4,7 @@
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>注册 - 拿破仑战争</title>
-	<link rel="stylesheet" href="css/style.css?v=20260915-story-route1">
+	<link rel="stylesheet" href="css/style.css?v=20260915-command2">
 	<link rel="icon" type="image/svg+xml" href="./favicon.svg">
 </head>
 <body class="page-register" data-title-i18n="auth.registerTitle">
@@ -30,8 +30,9 @@
 			<p class="form-link"><span data-i18n="auth.hasAccount">已有账号？</span> <a href="index.html" data-i18n="auth.backLogin">返回登录</a></p>
 		</div>
 	</div>
+	<div class="page-route-curtain" aria-hidden="true"><span>N</span></div>
 
-	<script src="js/ui.js?v=20260915-story-route1"></script>
+	<script src="js/ui.js?v=20260915-command2"></script>
 	<script src="js/account.js"></script>
 	<script>
 		document.getElementById('register-form').addEventListener('submit', function (e) {
@@ -44,8 +45,9 @@
 			if (pass !== pass2) { msg.textContent = uiT('auth.mismatch'); return; }
 			var res = register(name, pass);
 			if (!res.ok) { msg.textContent = res.msg; return; }
-			// 注册成功视为已登录，直接进主界面
-			window.location.href = 'menu.html';
+			// 注册成功视为已登录，先选择通关或联机模式。
+			document.body.classList.add('is-routing');
+			window.setTimeout(function () { window.location.href = 'mode.html'; }, 560);
 		});
 	</script>
 </body>
